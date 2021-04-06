@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# ----------------------------------------------------------------------
+# KTH username
+user="oleigh"
+
+# Directory of files:
+dir="~/SMC"
+
+# Email creater
+semads=$dir"/semads.py"
+
+# Mailer
+seminarmailer=$dir"/seminarmailer.py"
+
+# Email list:
+email_list=$dir"/emails.txt"
+
+# ----------------------------------------------------------------------
+# Calculate the dates:
+
+start_date=$(date -d 'next Monday' +"%Y%m%d")
+end_date=$(date -d 'Sunday next week' +"%Y%m%d")
+
+start_day=$(LANG=au_EN.utf8; date -d 'next Monday' +"%d %B")
+end_day=$(LANG=au_EN.utf8; date -d 'Sunday  next week' +"%d %B")
+
+year=$(date -d 'next Monday' +"%Y")
+week_number=$(date -d 'next Monday' +"%V")
+
+# echo $start_date
+# echo $end_date
+
+# ----------------------------------------------------------------------
+# Create email message:
+message_file=$dir"/Archive/seminars"$year"_W"$week_number".txt"
+create_message_1="python "$semads" --start "
+create_message_2=" --stop "
+create_message_3=" --output "
+create_message_code=$create_message_1$start_date$create_message_2$end_date$create_message_3$message_file
+
+eval $create_message_code
+
+# ----------------------------------------------------------------------
+# Prompt user to check message:
+# For macOS:
+# open -a TextEdit $message_file
+# For command line:
+nano $message_file
+
+response="No"
+while [  "$response" != "y" ]; do
+             echo Please check the email. Is it ok to send? \(\"y\" to send, crtl\+c to exit\)
+             read response
+done
+
+# ----------------------------------------------------------------------
+# Send email message:
+send_email_1='python '$seminarmailer' --sendlist '$email_list' --subject "Seminars, '
+send_email_2=' - '
+send_email_3='" --message '
+send_email_4=' --username '$user
+send_email_code=$send_email_1$start_day$send_email_2$end_day$send_email_3$file_name$message_file$send_email_4
+
+echo $send_email_code
+eval $send_email_code
+

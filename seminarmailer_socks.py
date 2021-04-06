@@ -6,7 +6,10 @@ from email.Header import Header
 #from email.mime.text import MIMEText
 from email.MIMEText import MIMEText
 
-import codecs, email, smtplib, getpass, optparse, os, sys, time
+import codecs, email, smtplib, getpass, optparse, os, sys, time, socks
+
+socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, 'localhost', 1492)
+socks.wrapmodule(smtplib)
 
 
 # SEMINARMAILER.PY

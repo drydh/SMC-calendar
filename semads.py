@@ -3,13 +3,13 @@
 
 import datetime, copy, codecs, optparse, os, re, sys, htmlentitydefs, urllib2
 strptime = datetime.datetime.strptime
-from BeautifulSoup import BeautifulSoup
-from BeautifulSoup import BeautifulStoneSoup
+from bs4 import BeautifulSoup
+from bs4 import BeautifulStoneSoup
 
 
 # SEMADS.PY
 #
-# This script downloads the calender of the smc and
+# This script downloads the calendar of the SMC and
 # formats the information as a text file.
 #
 # Usage
@@ -109,14 +109,17 @@ for day in download_days:
     url += "?date=" + day.isoformat()
     url += "&length=1"
     #url += "&l=en_UK"
-
+    
     page = urllib2.urlopen(url)
     info = page.info()  
-    content = BeautifulSoup(page)
+    content = BeautifulSoup(page,features="lxml")
 
     seminar_list = []
 
     if content.find('h2',text=re.compile(u'Kalenderhändelser saknas')):
+        continue
+
+    if content.find('p',text=re.compile(u'Kalenderhändelser saknas')):
         continue
 
     for seminar_el in content.findAll('li', {'class':'calendar__event'}):
@@ -172,10 +175,10 @@ for day in download_days:
 
         # Location
         for el in seminar_el.findAll('div'):
-            bel = el.find('span', {'class': 'calendar__eventinfo--bold',})
-            if bel and bel.contents[0] == 'Plats: ':
-                location = bel.findNext('a').contents[0].strip()
-                location = BeautifulStoneSoup(location, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
+            bel = el.find('div', {'class': 'calendar__eventinfo-location',})
+            if bel: 
+                location = bel.contents[3].contents[0].strip()
+                location = BeautifulSoup(location,features="lxml").contents[0].get_text()
                 break
 
         # Collect info
@@ -203,8 +206,8 @@ body = ""
 body += "SEMINARS\n"
 body += "========\n"
 body += "\n"
-body += "This is an automatically generated summary of the Stockholm Mathematics Center\n"
-body += "web calender for seminars from %s to %s.\n\n" % (startdate, stopdate)
+body += "This is an automatically generated summary of the Stockholm Mathematics Centre\n"
+body += "web calendar for seminars from %s to %s.\n\n" % (startdate, stopdate)
 
 body += "Send subscription requests to kalendarium@math-stockholm.se.\n\n"
 
