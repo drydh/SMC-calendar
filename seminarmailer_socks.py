@@ -144,7 +144,7 @@ subject = options.subject or "Seminars"
 
 server = smtplib.SMTP('smtp.kth.se',587)
 server.starttls()
-psswd = getpass.getpass(options.username + "@kth.se's username:")
+psswd = getpass.getpass(options.username + "@kth.se's password:")
 try:
     server.login(options.username, psswd)
 except:
