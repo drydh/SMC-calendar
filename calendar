@@ -1,20 +1,34 @@
 #!/bin/bash
+#
+# Usage: calendar [extra options to seminarmailer.py]
 
 # ----------------------------------------------------------------------
 # KTH username
 user="username"
 
-# Directory of files:
-dir="~/SMC"
+# ----------------------------------------------------------------------
+# Python setup
+python="python" # Replace with specific version (e.g. python2) if necessary
 
-# Email creater
-semads=$dir"/semads.py"
+# On MacOS X, may need updated SSL certificates.
+#
+# This needs Python package certifi which can be install using
+# > python -m pip install certifi
+if [[ $OSTYPE == 'darwin'* ]]; then
+  CERT_PATH=$($python -m certifi)
+  export SSL_CERT_FILE=${CERT_PATH}
+  export REQUESTS_CA_BUNDLE=${CERT_PATH}
+fi
 
-# Mailer
-seminarmailer=$dir"/seminarmailer.py"
+# ----------------------------------------------------------------------
+# Change to script directory
 
-# Email list:
-email_list=$dir"/emails.txt"
+cd $(dirname "${BASH_SOURCE[0]}")
+install -d Archive
+
+semads="semads.py"               # Email creator script
+seminarmailer="seminarmailer.py" # Mailer script
+email_list="emails.txt"          # List of emails
 
 # ----------------------------------------------------------------------
 # Calculate the dates:
@@ -22,46 +36,41 @@ email_list=$dir"/emails.txt"
 start_date=$(date -d 'next Monday' +"%Y%m%d")
 end_date=$(date -d 'Sunday next week' +"%Y%m%d")
 
-start_day=$(LANG=au_EN.utf8; date -d 'next Monday' +"%d %B")
-end_day=$(LANG=au_EN.utf8; date -d 'Sunday  next week' +"%d %B")
+start_day=$(LANG=en_US; date -d ${start_date} +"%d %B")
+end_day=$(LANG=en_US; date -d ${end_date} +"%d %B")
+year=$(date -d ${start_date} +"%Y")
+week_number=$(date -d ${start_date} +"%V")
 
-year=$(date -d 'next Monday' +"%Y")
-week_number=$(date -d 'next Monday' +"%V")
-
-# echo $start_date
-# echo $end_date
 
 # ----------------------------------------------------------------------
 # Create email message:
-message_file=$dir"/Archive/seminars"$year"_W"$week_number".txt"
-create_message_1="python "$semads" --start "
-create_message_2=" --stop "
-create_message_3=" --output "
-create_message_code=$create_message_1$start_date$create_message_2$end_date$create_message_3$message_file
 
-eval $create_message_code
+echo "Fetching seminars from $start_date to $end_date"
+message_file="Archive/seminars${year}_W${week_number}.txt"
+$python "$semads" --start "${start_date}" --stop "${end_date}" --output "$message_file"
+
 
 # ----------------------------------------------------------------------
 # Prompt user to check message:
-# For macOS:
-# open -a TextEdit $message_file
-# For command line:
-nano $message_file
+
+if [[ $OSTYPE == 'darwin'* ]]; then
+  open -a TextEdit $message_file
+else
+  nano $message_file
+fi
 
 response="No"
-while [  "$response" != "y" ]; do
-             echo Please check the email. Is it ok to send? \(\"y\" to send, crtl\+c to exit\)
-             read response
+while [ "$response" != "y" ]; do
+  echo "Please check the email. Is it ok to send? (\"y\" to send, ctrl+c to exit)"
+  read response
 done
+
 
 # ----------------------------------------------------------------------
 # Send email message:
-send_email_1='python '$seminarmailer' --sendlist '$email_list' --subject "Seminars, '
-send_email_2=' - '
-send_email_3='" --message '
-send_email_4=' --username '$user
-send_email_code=$send_email_1$start_day$send_email_2$end_day$send_email_3$file_name$message_file$send_email_4
 
-echo $send_email_code
-eval $send_email_code
-
+$python $seminarmailer \
+	--sendlist "${email_list}" \
+	--subject "Seminars, ${start_day} - ${end_day}" \
+    --message "${message_file}" \
+	--username $user "$@"

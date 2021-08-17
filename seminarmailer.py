@@ -1,14 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-from email.Message import Message
-from email.Header import Header
-#from email.mime.text import MIMEText
-from email.MIMEText import MIMEText
-
-import codecs, email, smtplib, getpass, optparse, os, sys, time
-
-
+#
 # SEMINARMAILER.PY
 #
 # This script sends an email message
@@ -19,7 +11,14 @@ import codecs, email, smtplib, getpass, optparse, os, sys, time
 #   --sendlist emails.txt --username boij
 #
 # The above run will send the message in the file input.txt with subject
-# line "Seminars" to the recipients listed in the file emails.txt.
+# line "Seminars" to the recipients listed in the file emails.txt
+# logging in as boij to smtp.kth.se
+
+from email.message import Message
+from email.header import Header
+from email.mime.text import MIMEText
+
+import codecs, email, smtplib, getpass, optparse, os, sys, time
 
 
 # READ COMMAND-LINE OPTIONS
@@ -54,8 +53,8 @@ if not options.username:
     errs += "%s: error: No username specified\n" % \
             (os.path.basename(sys.argv[0]),)
 
-if errs<>"":
-    print "%s" % (errs,)
+if errs != "":
+    print( "%s" % (errs,) )
     parser.print_help()
     sys.exit()
 
@@ -67,8 +66,8 @@ if options.message:
         input = codecs.open(options.message, mode='r', encoding='utf-8')
         #input = codecs.open(options.message, mode='r')
     except:
-        print "%s: error: Unable to open file %s for reading" % \
-            (os.path.basename(sys.argv[0]), options.message)
+        print( "%s: error: Unable to open file %s for reading" % \
+            (os.path.basename(sys.argv[0]), options.message) )
         sys.exit()
 
 
@@ -79,8 +78,8 @@ if options.sendlist_file:
     try:
         sendlist_file = open(options.sendlist_file, "r")
     except:
-        print "%s: error: Unable to open file %s for reading" % \
-            (os.path.basename(sys.argv[0]), options.sendlist_file)
+        print( "%s: error: Unable to open file %s for reading" % \
+            (os.path.basename(sys.argv[0]), options.sendlist_file) )
         sys.exit()
 
 GENERIC_DOMAINS = "aero", "asia", "biz", "cat", "com", "coop", \
@@ -145,7 +144,7 @@ psswd = getpass.getpass(options.username + "@kth.se's password:")
 try:
     server.login(options.username, psswd)
 except:
-    print "Unable to login to smtp.kth.se"
+    print( "Unable to login to smtp.kth.se" )
     sys.exit()
 
 for addr in sendlist:
@@ -162,9 +161,8 @@ for addr in sendlist:
     
     server.sendmail(sender, [receiver], m.as_string())
 
-    print "Skickat till %s" % (receiver,)
+    print( "Sent to %s" % (receiver,) )
 
     time.sleep(2)
 
 server.close()
-

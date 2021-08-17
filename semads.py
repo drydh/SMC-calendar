@@ -1,12 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-import datetime, copy, codecs, optparse, os, re, sys, htmlentitydefs, urllib2
-strptime = datetime.datetime.strptime
-from bs4 import BeautifulSoup
-from bs4 import BeautifulStoneSoup
-
-
+#
 # SEMADS.PY
 #
 # This script downloads the calendar of the SMC and
@@ -19,6 +13,29 @@ from bs4 import BeautifulStoneSoup
 # The above run will download all items in the calendar from 20100301
 # (March 1, 2010) to 20100308 (March 8, 2010), output the generated
 # text file in message.txt.
+#
+# Compatibility
+#
+# Compatible with both Python 2 and Python 3
+#
+# Requires modules bs4 (BeautifulSoup4) and lxml which are installed as follows:
+# python -m pip install bs4
+# python -m pip install lxml
+
+try:
+    import htmlentitydefs # Python 2
+except ImportError:
+    import html.entities # Python 3
+
+try:
+    from urllib2 import urlopen # Python 2
+except ImportError:
+    from urllib.request import urlopen # Python 3
+
+import datetime, copy, codecs, optparse, os, re, sys
+strptime = datetime.datetime.strptime
+from bs4 import BeautifulSoup, BeautifulStoneSoup
+import lxml
 
 
 # READ COMMAND-LINE OPTIONS
@@ -59,14 +76,14 @@ if not options.stop:
     errs += "%s: error: No stop date specified\n" % \
             (os.path.basename(sys.argv[0]),)
 
-if errs<>"":
-    print "%s" % (errs,)
+if errs != "":
+    print( "%s" % (errs,) )
     parser.print_help()
     sys.exit()
 
 if options.start > options.stop:
-    print "%s: error: Start date must be before stop date" % \
-          (os.path.basename(sys.argv[0]))
+    print( "%s: error: Start date must be before stop date" % \
+          (os.path.basename(sys.argv[0])) )
     sys.exit()
 
 
@@ -76,8 +93,8 @@ if options.output:
     try:
         output = codecs.open(options.output, mode='w', encoding='utf-8')
     except:
-        print "%s: error: Unable to open file %s for writing" % \
-            (os.path.basename(sys.argv[0]), options.output)
+        print( "%s: error: Unable to open file %s for writing" % \
+            (os.path.basename(sys.argv[0]), options.output) )
         sys.exit()
 
 
@@ -109,9 +126,11 @@ for day in download_days:
     url += "?date=" + day.isoformat()
     url += "&length=1"
     #url += "&l=en_UK"
+
+    print( "Fetching seminars for " + day.isoformat() )
     
-    page = urllib2.urlopen(url)
-    info = page.info()  
+    page = urlopen(url)
+    info = page.info()
     content = BeautifulSoup(page,features="lxml")
 
     seminar_list = []

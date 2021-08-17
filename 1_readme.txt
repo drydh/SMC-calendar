@@ -1,11 +1,10 @@
-Needs Python 2 installed with bs4 (BeautifulSoup)
+Needs Python 2 or Python 3 installed with bs4 (BeautifulSoup) and lxml.
 
 Usage: 
-1. Make sure calendar, semads.py and eminarmailer.py are in the same directory.
-2. Create a directory called Archive (if it doesn't already exist) within the above directory. 
-3. Update "dir" in "calendar" file to reflect the directory containing these files. 
-4. Update "user" in "calendar" file to reflect your KTH username.
-5. Make sure that the calendar file is executable (e.g. use chmod).
+1. Make sure calendar, semads.py and seminarmailer.py are in the same directory.
+2. Update "user" in "calendar" file to reflect your KTH username.
+3. Update "python" in "calendar" file if necessary.
+4. Make sure that the calendar file is executable (e.g. use chmod).
 5. Run ./calendar from the directory containing the files. 
 6. The script will create the week's email and display it in the nano editor. 
 7. Check the email and press ctrl+o to save any changes.
@@ -15,5 +14,5 @@ Usage:
 
 Notes:
 - You can run these files from any computer. 
-- If you are running these files from your own computer there is an option to use socks proxys for the mailer. 
-
+- If you are running these files from your own computer there is an option to
+  use a socks proxy for the mailer. 
