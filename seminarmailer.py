@@ -30,9 +30,14 @@ parser.add_option("--sendlist", action="store", type="string",
 parser.add_option("--message", action="store", type="string",
                   help="name of source file of email message", metavar="FILE")
 parser.add_option("--subject", action="store", type="string",
-                  help="subject line of email message", metavar="FILE")
+                  help="subject line of email message")
 parser.add_option("--username", action="store", type="string",
-                  help="KTH username of user", metavar="FILE")
+                  help="KTH username of user")
+#parser.add_option("--ssl", action="store_true", dest="ssl",
+#                  help="connect via SSL")
+#parser.add_option("--socks", action="store_true", dest="socks",
+#                  help="Use SOCKS proxy")
+#parser.set_defaults(ssl=False)
 
 (options, args) = parser.parse_args()
 
@@ -57,6 +62,15 @@ if errs != "":
     print( "%s" % (errs,) )
     parser.print_help()
     sys.exit()
+
+# SETUP PROXY IF REQUESTED
+# if options.socks:
+#     import socks
+#     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, 'localhost', 1492)
+#     socks.wrapmodule(smtplib)
+#
+# # There seems to be IPv6-problems wrapping socks around smtplib in this way.
+# # Perhaps need to explicitly connect using socket.connect((host,port))
 
 
 # OPEN MESSAGE FILE
