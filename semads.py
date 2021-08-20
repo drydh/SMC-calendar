@@ -57,8 +57,11 @@ parser.add_option("--start", action="store", type="date",
                   help="start date", metavar="YYYYMMDD", dest="start")
 parser.add_option("--stop", action="store", type="date",
                   help="stop date", metavar="YYYYMMDD", dest="stop")
+parser.add_option("--lang", action="store", type="string",
+                  help="language (sv/en)", dest="lang")
 parser.add_option("--output", action="store", type="string",
                   help="name of destination file of email message", metavar="FILE")
+parser.set_defaults(lang="en")
 
 (options, args) = parser.parse_args()
 
@@ -75,6 +78,9 @@ if not options.start:
 if not options.stop:
     errs += "%s: error: No stop date specified\n" % \
             (os.path.basename(sys.argv[0]),)
+if options.lang not in ('sv','en'):
+    errs += "%s: error: Unknown language '%s' specified\n" % \
+            (os.path.basename(sys.argv[0]),options.lang)
 
 if errs != "":
     print( "%s" % (errs,) )
@@ -117,17 +123,25 @@ while download_days[-1] < options.stop:
 #
 # seminar = [starttime, stoptime, seminar_serie, speaker, title, calender_url]
 
+if options.lang == 'en':
+    re_no = re.compile(u'No calendar events were found')
+else:
+    re_no = re.compile(u'Kalenderhändelser saknas')
+
 seminars = []
 for day in download_days:
 
     seminars.append([day, []])
 
-    url = "http://www.math-stockholm.se/kalender"
+    if options.lang == 'en':
+        url = "http://www.math-stockholm.se/en/kalender"
+    else:
+        url = "http://www.math-stockholm.se/kalender"
     url += "?date=" + day.isoformat()
     url += "&length=1"
     #url += "&l=en_UK"
 
-    print( "Fetching seminars for " + day.isoformat() )
+    print( "Fetching seminars for %s (%s)" % (day.isoformat(),options.lang) )
     
     page = urlopen(url)
     info = page.info()
@@ -135,10 +149,7 @@ for day in download_days:
 
     seminar_list = []
 
-    if content.find('h2',text=re.compile(u'Kalenderhändelser saknas')):
-        continue
-
-    if content.find('p',text=re.compile(u'Kalenderhändelser saknas')):
+    if content.find('h2',text=re_no) or content.find('p',text=re_no):
         continue
 
     for seminar_el in content.findAll('li', {'class':'calendar__event'}):
