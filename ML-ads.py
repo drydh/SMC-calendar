@@ -234,6 +234,8 @@ if options.output:
 re_no = re.compile(u'No calendar events were found')
 
 url = "http://mittag-leffler.se/research-programs/current-program/seminars"
+# To obtain seminars from program that haven't yet started, e.g.:
+#   url = "http://mittag-leffler.se/langa-program/higher-algebraic-structures-algebra-topology-and-geometry/seminars"
 seminars = fetchSeminars(url)
 
 # OUTPUT SEMINARS
