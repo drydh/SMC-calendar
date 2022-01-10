@@ -172,11 +172,14 @@ for addr in sendlist:
     m['Subject'] = Header(subject, 'utf-8')
     #m.set_payload(body)
     #m.set_charset('utf-8')
-    
-    server.sendmail(sender, [receiver], m.as_string())
 
-    print( "Sent to %s" % (receiver,) )
+    try:
+        server.sendmail(sender, [receiver], m.as_string())
+        print( "Sent to %s" % (receiver,) )
+    except Exception as e:
+        print( "Error sending to %s" % (receiver,) )
+        print( e )
 
-    time.sleep(2)
+    time.sleep(0.3)
 
 server.close()
