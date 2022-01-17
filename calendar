@@ -31,10 +31,10 @@ seminarmailer="seminarmailer.py" # Mailer script
 email_list="emails.txt"          # List of emails
 
 # ----------------------------------------------------------------------
-# Calculate the dates:
+# Calculate the dates: (send on Wed-Sun previous week or Mon-Tue current week)
 
-start_date=$(date -d 'next Monday' +"%Y%m%d")
-end_date=$(date -d 'Sunday next week' +"%Y%m%d")
+start_date=$(date -d 'next Wednesday - 2 days' +"%Y%m%d")
+end_date=$(date -d 'next Wednesday + 4 days' +"%Y%m%d")
 
 start_day=$(LANG=en_US; date -d ${start_date} +"%d %B")
 end_day=$(LANG=en_US; date -d ${end_date} +"%d %B")
