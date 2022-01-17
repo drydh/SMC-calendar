@@ -18,7 +18,7 @@ from email.message import Message
 from email.header import Header
 from email.mime.text import MIMEText
 
-import codecs, email, smtplib, getpass, optparse, os, sys, time
+import codecs, email, smtplib, getpass, optparse, os, sys, time, re
 
 
 # READ COMMAND-LINE OPTIONS
@@ -103,7 +103,7 @@ GENERIC_DOMAINS = "aero", "asia", "biz", "cat", "com", "coop", \
 def valid_email(emailaddress, domains = GENERIC_DOMAINS):
     """Checks for a syntactically invalid email address."""
     
-    # Email address must be 7 characters in total.
+    # Email address must be at least 7 characters in total.
     if len(emailaddress) < 7:
         return False # Address too short.
     
@@ -132,8 +132,13 @@ sendlist = []
 if sendlist_file:
     for line in sendlist_file.readlines():
         email = line.strip()
-        if valid_email(email):
+        if re.search( "^#.*", email ):
+            pass # Comment line, skip
+        elif valid_email(email):
             sendlist.append(email)
+        else:
+            print( "Invalid email: %s" % (email,) )
+            
 
 
 # READ INPUT FILE
@@ -161,6 +166,8 @@ except:
     print( "Unable to login to smtp.kth.se" )
     sys.exit()
 
+idx = 1
+
 for addr in sendlist:
 
     receiver = addr
@@ -175,10 +182,11 @@ for addr in sendlist:
 
     try:
         server.sendmail(sender, [receiver], m.as_string())
-        print( "Sent to %s" % (receiver,) )
+        print( "Sent to %s (%d/%d)" % (receiver,idx,len(sendlist),) )
     except Exception as e:
         print( "Error sending to %s" % (receiver,) )
         print( e )
+    idx += 1
 
     time.sleep(0.3)
 
