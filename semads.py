@@ -160,7 +160,25 @@ for day in download_days:
         speaker = ""
         title = ""
         location = ""
+        video = ""
         calendar_url = ""
+
+        def find_row( div_id, header ):
+            if div_id:
+                divs = seminar_el.findAll('div', {'class': 'calendar__eventinfo-location',})
+            else:
+                divs = seminar_el.findAll('div')
+
+            for bel in divs:
+                try:
+                    if( bel.contents[1].contents[0].strip() == header ):
+                        data = bel.contents[3].contents[0].strip()
+                        data = BeautifulSoup(data,features="lxml").contents[0].get_text()
+                        return data
+                except:
+                    pass
+
+            return None
 
         # Seminar serie
         seminarserie = seminar_el.find('div', {'class': 'calendar__eventinfo--bold'})
@@ -204,12 +222,24 @@ for day in download_days:
         calendar_url = "http://www.math-stockholm.se" + calendar_url
 
         # Location
-        for el in seminar_el.findAll('div'):
-            bel = el.find('div', {'class': 'calendar__eventinfo-location',})
-            if bel: 
-                location = bel.contents[3].contents[0].strip()
-                location = BeautifulSoup(location,features="lxml").contents[0].get_text()
-                break
+        location = find_row( 'calendar__eventinfo-location', 'Location:' )
+        video = find_row( 'calendar__eventinfo-location', 'Video link:' )
+
+        # # Location
+        # for bel in seminar_el.findAll('div', {'class': 'calendar__eventinfo-location',}):
+        #     loc_type = bel.contents[1].contents[0].strip()
+        #     if( loc_type == "Location:" ):
+        #         location = bel.contents[3].contents[0].strip()
+        #         location = BeautifulSoup(location,features="lxml").contents[0].get_text()
+        #     elif( loc_type == "Video link:" ):
+        #         video = bel.contents[3].contents[0].strip()
+        #     else:
+        #         print( "Unknown location type: %s\n" % (loc_type,) )
+
+        if location == "" and video != "" :
+            location = video
+        elif location != "" and video != "" :
+            location = "%s (%s)" % (location,video,)
 
         # Collect info
         seminar = [starttime, stoptime, seminarserie, speaker, title, location,
