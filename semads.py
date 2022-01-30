@@ -236,9 +236,9 @@ for day in download_days:
         #     else:
         #         print( "Unknown location type: %s\n" % (loc_type,) )
 
-        if location == "" and video != "" :
+        if not location and video:
             location = video
-        elif location != "" and video != "" :
+        elif location and video:
             location = "%s (%s)" % (location,video,)
 
         # Collect info
