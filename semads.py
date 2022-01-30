@@ -196,6 +196,16 @@ for day in download_days:
         speaker = speaker.strip()
         title = title.strip()
 
+        # lecturer = find_row( None, 'Lecturer:' )
+        # doctoral_student = find_row( None, 'Doctoral Student:' )
+        # respondent = find_row( None, 'Respondent:' )
+        # if lecturer:
+        #     speaker = lecturer
+        # elif doctoral_student:
+        #     speaker = doctoral_student
+        # elif respondent:
+        #     speaker = respondent
+
         try:
             speaker = BeautifulStoneSoup(speaker, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
             title = BeautifulStoneSoup(title, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
