@@ -16,6 +16,7 @@
 
 from email.message import Message
 from email.header import Header
+from email.utils import formatdate
 from email.mime.text import MIMEText
 
 import codecs, email, smtplib, getpass, optparse, os, sys, time, re
@@ -177,6 +178,8 @@ for addr in sendlist:
     m['To'] = receiver
     m['From'] = sender
     m['Subject'] = Header(subject, 'utf-8')
+    m['Date'] = formatdate(localtime=True)
+
     #m.set_payload(body)
     #m.set_charset('utf-8')
 
