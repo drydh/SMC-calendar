@@ -197,7 +197,7 @@ for day in download_days:
         title = title.strip()
 
         # lecturer = find_row( None, 'Lecturer:' )
-        # doctoral_student = find_row( None, 'Doctoral Student:' )
+        # doctoral_student = find_row( None, 'Doctoral student:' )
         # respondent = find_row( None, 'Respondent:' )
         # if lecturer:
         #     speaker = lecturer
@@ -205,6 +205,8 @@ for day in download_days:
         #     speaker = doctoral_student
         # elif respondent:
         #     speaker = respondent
+        # else:
+        #     print( "Warning: Did not find Lecturer/Doctoral Student/Respondent for %s: %s" % (speaker,title) )
 
         try:
             speaker = BeautifulStoneSoup(speaker, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
@@ -250,6 +252,9 @@ for day in download_days:
             location = video
         elif location and video:
             location = "%s (%s)" % (location,video,)
+        elif not location and not video:
+            print( "Warning: Did not find either location or video link for %s: %s" % (speaker,title) )
+
 
         # Collect info
         seminar = [starttime, stoptime, seminarserie, speaker, title, location,
