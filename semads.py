@@ -165,9 +165,9 @@ for day in download_days:
 
         def find_row( div_id, header ):
             if div_id:
-                divs = seminar_el.findAll('div', {'class': 'calendar__eventinfo-location',})
+                divs = seminar_el.findAll('p', {'class': 'calendar__eventinfo-location',})
             else:
-                divs = seminar_el.findAll('div')
+                divs = seminar_el.findAll('p')
 
             for bel in divs:
                 try:
@@ -181,7 +181,7 @@ for day in download_days:
             return None
 
         # Seminar serie
-        seminarserie = seminar_el.find('div', {'class': 'calendar__eventinfo--bold'})
+        seminarserie = seminar_el.find('p', {'class': 'calendar__eventinfo--bold'})
         seminarserie = seminarserie.string or ""
         seminarserie = seminarserie.strip()
 
