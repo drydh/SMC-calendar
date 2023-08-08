@@ -1,0 +1,27 @@
+Polopoly instructions
+=====================
+- URL: https://www-edit.sys.kth.se/polopoly
+- Documentation: https://intra.kth.se/en/administration/kommunikation/webb/verktyg/polopoly
+
+- Format of calendar ads:
+  * Title "First Last: Title"
+  * Date
+  * Place (physical or Zoom)
+  * Video link (if both physical and Zoom)
+  * Lecturer "First Last (University)" [NOT used for thesis defenses]
+  * Contents "Abstract: ABSTRACT"
+- For master presentation / thesis defense:
+  * Choose type under "Seminar specifics"
+  * Enter respondent under "Seminar specifics" (leave lecturer blank)
+  * Enter supervisor under "Seminar specifics"
+
+To be aware of:
+- It can take a few minutes before changes in PoloPoly are reflected on the
+  webpages.
+- ID's, linking of pages, parents, copy & paste, ...
+- When copying an article, hyperlinks are not copied but links to the same
+  object, that is, changes in the hyperlink in the copied article also results
+  in changes to the original.  Thus, should delete hyperlink and then add a new
+  one. (typical scenario: DiVA-link in licentiate seminars / dissertations)
+- Language settings ...
+- Repair link if inserting article in different folder (typically: new year)

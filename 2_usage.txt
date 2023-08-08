@@ -1,5 +1,6 @@
-Needs Python 2 or Python 3 installed with bs4 (BeautifulSoup) and lxml. With
-pip these can be installed as follows:
+Installation notes:
+- Needs Python 2 or Python 3 installed with bs4 (BeautifulSoup) and lxml. With
+  pip these can be installed as follows:
 > python -m pip install bs4
 > python -m pip install lxml
 
@@ -13,9 +14,9 @@ Usage:
 7. Check the email and press ctrl+o to save any changes.
 8. When the email has been checked press ctrl+x.
 9. Press y to send the email or ctrl+c to exit. 
-10. When promted, type in your KTH password to send the email. 
+10. When prompted, type in your KTH password to send the email. 
 
 Notes:
 - You can run these files from any computer. 
 - If you are running these files from your own computer there is an option to
-  use a socks proxy for the mailer. 
+  use a socks proxy for the mailer. [currently disabled]
