@@ -16,309 +16,242 @@
 #
 # Compatibility
 #
-# Compatible with both Python 2 and Python 3
-#
-# Requires modules bs4 (BeautifulSoup4) and lxml which are installed as follows:
-# python -m pip install bs4
-# python -m pip install lxml
+# Install required packages using:
+# python -m pip install -r requirements.txt
 
-try:
-    import htmlentitydefs # Python 2
-except ImportError:
-    import html.entities # Python 3
+import argparse
+import contextlib
+import datetime
+import locale
+import re
+from urllib.request import urlopen  # Python 3
 
-try:
-    from urllib2 import urlopen # Python 2
-except ImportError:
-    from urllib.request import urlopen # Python 3
+from bs4 import BeautifulSoup
 
-import datetime, copy, codecs, optparse, os, re, sys
+locale.setlocale(locale.LC_TIME, locale=("en_US", "utf-8"))
+
 strptime = datetime.datetime.strptime
-from bs4 import BeautifulSoup, BeautifulStoneSoup
-import lxml
-
 
 # READ COMMAND-LINE OPTIONS
 
-def check_date(option, opt, val):
-    try:
-        return strptime(val,'%Y%m%d').date()
-    except ValueError:
-        raise optparse.OptionValueError(
-            "option %s: invalid date value: %r" % (opt, val))
 
-class ExtOption (optparse.Option):
-    TYPES = optparse.Option.TYPES + ("date",)
-    TYPE_CHECKER = copy.copy(optparse.Option.TYPE_CHECKER)
-    TYPE_CHECKER["date"] = check_date
-
-parser = optparse.OptionParser(option_class=ExtOption)
-parser.add_option("--start", action="store", type="date",
-                  help="start date", metavar="YYYYMMDD", dest="start")
-parser.add_option("--stop", action="store", type="date",
-                  help="stop date", metavar="YYYYMMDD", dest="stop")
-parser.add_option("--lang", action="store", type="string",
-                  help="language (sv/en)", dest="lang")
-parser.add_option("--output", action="store", type="string",
-                  help="name of destination file of email message", metavar="FILE")
-parser.set_defaults(lang="en")
-
-(options, args) = parser.parse_args()
+def parse_date(val):
+    return strptime(val, "%Y%m%d").date()
 
 
-# CHECK OPTIONS
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--start", type=parse_date, help="start date", metavar="YYYYMMDD", required=True
+)
+parser.add_argument(
+    "--stop", type=parse_date, help="stop date", metavar="YYYYMMDD", required=True
+)
+parser.add_argument(
+    "--output",
+    action="store",
+    help="name of destination file of email message",
+    metavar="FILE",
+    required=True,
+)
+parser.add_argument(
+    "--lang",
+    action="store",
+    choices=["en", "sv"],
+    help="language (sv/en)",
+    metavar="en|sv",
+    default="en",
+)
 
-errs = ""
-if not options.output:
-    errs += "%s: error: No output file specified\n" % \
-            (os.path.basename(sys.argv[0]),)
-if not options.start:
-    errs += "%s: error: No start date specified\n" % \
-            (os.path.basename(sys.argv[0]),)
-if not options.stop:
-    errs += "%s: error: No stop date specified\n" % \
-            (os.path.basename(sys.argv[0]),)
-if options.lang not in ('sv','en'):
-    errs += "%s: error: Unknown language '%s' specified\n" % \
-            (os.path.basename(sys.argv[0]),options.lang)
+args = parser.parse_args()
 
-if errs != "":
-    print( "%s" % (errs,) )
-    parser.print_help()
-    sys.exit()
+# Argument validation
 
-if options.start > options.stop:
-    print( "%s: error: Start date must be before stop date" % \
-          (os.path.basename(sys.argv[0])) )
-    sys.exit()
-
-
-# OPEN OUTPUT FILE
-
-if options.output:
-    try:
-        output = codecs.open(options.output, mode='w', encoding='utf-8')
-    except:
-        print( "%s: error: Unable to open file %s for writing" % \
-            (os.path.basename(sys.argv[0]), options.output) )
-        sys.exit()
+if args.start > args.stop:
+    raise ValueError("Start date must be before stop date")
 
 
-# FIND ALL DAYS TO DOWNLOAD
-
-download_days = [options.start]
-oneday = datetime.timedelta(days=1)
-while download_days[-1] < options.stop:
-    nextday = download_days[-1] + oneday
-    download_days.append(nextday)
+no_entries_string = {
+    "en": "No calendar events were found",
+    "sv": "Kalenderhändelser saknas",
+}[args.lang]
+no_entries_re = re.compile(no_entries_string)
 
 
-# DOWNLOAD ALL SEMINARS BETWEEN START AND STOP DATES
-#
-# This information is stored in the data structure
-#
-# seminars = [[<date object>, [seminar, ...]], ...]
-#
-# where
-#
-# seminar = [starttime, stoptime, seminar_serie, speaker, title, calender_url]
+def scrape_and_format():
 
-if options.lang == 'en':
-    re_no = re.compile(u'No calendar events were found')
-else:
-    re_no = re.compile(u'Kalenderhändelser saknas')
+    seminars = scrape_seminars()
 
-seminars = []
-for day in download_days:
+    start_date = format_date_header(args.start)
+    stop_date = format_date_header(args.stop)
 
-    seminars.append([day, []])
+    body = "\n".join(
+        [
+            "SEMINARS",
+            "========",
+            "",
+            "This is an automatically generated summary of the Stockholm Mathematics Centre",
+            f"web calendar for seminars from {start_date}, to {stop_date}.",
+            "",
+            "Send subscription requests to kalendarium@math-stockholm.se.",
+            "",
+            "",
+        ]
+    )
 
-    if options.lang == 'en':
-        url = "http://www.math-stockholm.se/en/kalender"
+    body += "".join(
+        format_day(day, seminar_list) for day, seminar_list in seminars if seminar_list
+    )
+    return body
+
+
+def scrape_seminars():
+    """DOWNLOAD ALL SEMINARS BETWEEN START AND STOP DATES
+
+    This information is stored in the data structure
+        seminars = [[<date object>, [seminar, ...]], ...]
+    where seminar is a dictionary with keys
+     ["start_time", "stop_time", "series", "speaker", "title", "calender_url"]
+    """
+
+    seminars = []
+    day = args.start
+    one_day = datetime.timedelta(days=1)
+    while day <= args.stop:
+        seminar_list = scrape_day(day)
+        if seminar_list:
+            seminars.append((day, seminar_list))
+        day += one_day
+    return seminars
+
+
+def scrape_day(day):
+    if args.lang == "en":
+        url = "https://www.math-stockholm.se/en/kalender"
     else:
-        url = "http://www.math-stockholm.se/kalender"
-    url += "?date=" + day.isoformat()
+        url = "https://www.math-stockholm.se/kalender"
+    url += f"?date={day.isoformat()}"
     url += "&length=1"
-    #url += "&l=en_UK"
+    # url += "&l=en_UK"
 
-    print( "Fetching seminars for %s (%s)" % (day.isoformat(),options.lang) )
-    
+    print(f"Fetching seminars for {day.isoformat()} ({args.lang})")
+
     page = urlopen(url)
-    info = page.info()
-    content = BeautifulSoup(page,features="lxml")
+    content = BeautifulSoup(page, features="lxml")
 
-    seminar_list = []
+    if content.find("h2", string=no_entries_re) or content.find(
+        "p", string=no_entries_re
+    ):
+        return []
 
-    if content.find('h2',text=re_no) or content.find('p',text=re_no):
-        continue
+    return [
+        parse_seminar(seminar_el)
+        for seminar_el in content.findAll("li", {"class": "calendar__event"})
+    ]
 
-    for seminar_el in content.findAll('li', {'class':'calendar__event'}):
 
-        starttime = ""
-        stoptime = ""
-        seminarserie = ""
+def parse_seminar(html):
+
+    series = html.find("p", class_="calendar__eventinfo--bold")
+    series = series.string.strip() if series is not None else ""
+
+    # Speaker and title
+    title = html.find("div").find("a")["title"]
+    try:
+        speaker, title = title.split(":", 1)
+    except ValueError:
         speaker = ""
-        title = ""
-        location = ""
-        video = ""
-        calendar_url = ""
+    speaker = speaker.strip()
+    title = title.strip()
 
-        def find_row( div_id, header ):
-            if div_id:
-                divs = seminar_el.findAll('p', {'class': 'calendar__eventinfo-location',})
-            else:
-                divs = seminar_el.findAll('p')
+    for alternate_speaker_tag in ["Lecturer", "Doctoral student", "Respondent"]:
+        if speaker != "":
+            break
+        speaker = find_row(html, f"{alternate_speaker_tag}:")
+    if speaker == "":
+        print(
+            f"Warning: Did not find Lecturer/Doctoral Student/Respondent for {speaker}: {title}"
+        )
 
-            for bel in divs:
-                try:
-                    if( bel.contents[1].contents[0].strip() == header ):
-                        data = bel.contents[3].contents[0].strip()
-                        data = BeautifulSoup(data,features="lxml").contents[0].get_text()
-                        return data
-                except:
-                    pass
+    speaker = unescape_html(speaker)
+    title = unescape_html(title)
 
-            return None
+    start_time = parse_span(html, "startTime")
+    stop_time = parse_span(html, "endTime").lstrip("-").strip()
 
-        # Seminar serie
-        seminarserie = seminar_el.find('p', {'class': 'calendar__eventinfo--bold'})
-        seminarserie = seminarserie.string or ""
-        seminarserie = seminarserie.strip()
+    calendar_url = html.find("div").find("a")["href"]
+    calendar_url = calendar_url.split("?")[0]
+    calendar_url = f"https://www.math-stockholm.se{calendar_url}"
 
+    location = find_row(html, "Location:", "calendar__eventinfo-location")
+    video = find_row(html, "Video link:", "calendar__eventinfo-location")
 
-        # Speaker and title
-        try:
-            speaker, title = seminar_el.find('div').find('a')['title'].split(":",1)
-        except ValueError:
-            speaker = ""
-            title = seminar_el.find('div').find('a')['title']
+    if video:
+        location = f"{location} ({video})" if location else video
+    if not location:
+        print(
+            f"Warning: Did not find either location or video link for {speaker}: {title}"
+        )
 
-        speaker = speaker.strip()
-        title = title.strip()
-
-        # lecturer = find_row( None, 'Lecturer:' )
-        # doctoral_student = find_row( None, 'Doctoral student:' )
-        # respondent = find_row( None, 'Respondent:' )
-        # if lecturer:
-        #     speaker = lecturer
-        # elif doctoral_student:
-        #     speaker = doctoral_student
-        # elif respondent:
-        #     speaker = respondent
-        # else:
-        #     print( "Warning: Did not find Lecturer/Doctoral Student/Respondent for %s: %s" % (speaker,title) )
-
-        try:
-            speaker = BeautifulStoneSoup(speaker, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
-            title = BeautifulStoneSoup(title, convertEntities=BeautifulStoneSoup.HTML_ENTITIES).contents[0]
-        except:
-            pass
-
-        # Start and stop time
-        starttime = seminar_el.find('span', {'class': 'startTime'})
-        starttime = starttime.string or ""
-        starttime = starttime.strip()
-
-        stoptime = seminar_el.find('span', {'class': 'endTime'})
-        try:
-            stoptime = stoptime.string or ""
-        except:
-            stoptime = ""
-        #stoptime = stoptime.strip()
-        if len(stoptime) < 6:
-            stoptime = " - "+ stoptime
-            
-        # Calendar url
-        calendar_url = seminar_el.find('div').find('a')['href']
-        calendar_url = calendar_url.split("?")[0]
-        calendar_url = "http://www.math-stockholm.se" + calendar_url
-
-        # Location
-        location = find_row( 'calendar__eventinfo-location', 'Location:' )
-        video = find_row( 'calendar__eventinfo-location', 'Video link:' )
-
-        # # Location
-        # for bel in seminar_el.findAll('div', {'class': 'calendar__eventinfo-location',}):
-        #     loc_type = bel.contents[1].contents[0].strip()
-        #     if( loc_type == "Location:" ):
-        #         location = bel.contents[3].contents[0].strip()
-        #         location = BeautifulSoup(location,features="lxml").contents[0].get_text()
-        #     elif( loc_type == "Video link:" ):
-        #         video = bel.contents[3].contents[0].strip()
-        #     else:
-        #         print( "Unknown location type: %s\n" % (loc_type,) )
-
-        if not location and video:
-            location = video
-        elif location and video:
-            location = "%s (%s)" % (location,video,)
-        elif not location and not video:
-            print( "Warning: Did not find either location or video link for %s: %s" % (speaker,title) )
+    return {
+        "start_time": start_time,
+        "stop_time": stop_time,
+        "series": series,
+        "speaker": speaker,
+        "title": title,
+        "location": location,
+        "url": calendar_url,
+    }
 
 
-        # Collect info
-        seminar = [starttime, stoptime, seminarserie, speaker, title, location,
-                   calendar_url,]
-
-        seminar_list.append(seminar)
-
-    seminars[-1][1] = seminar_list
-
-
-# PRINT THE SEMINARS
-
-WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-            "Saturday", "Sunday")
-MONTHS = ("January", "February", "March", "April", "May", "June", "July",
-          "August", "September", "October", "November", "December")
-
-day = options.start
-startdate = "%s %d, %4d," % (MONTHS[day.month-1], day.day, day.year)
-day = options.stop
-stopdate = "%s %d, %4d" % (MONTHS[day.month-1], day.day, day.year)
-
-body = ""
-body += "SEMINARS\n"
-body += "========\n"
-body += "\n"
-body += "This is an automatically generated summary of the Stockholm Mathematics Centre\n"
-body += "web calendar for seminars from %s to %s.\n\n" % (startdate, stopdate)
-
-body += "Send subscription requests to kalendarium@math-stockholm.se.\n\n"
-
-for daysem in seminars:
-    day = daysem[0]
-    seminar_list = daysem[1]
-
-    if not seminar_list:
-        continue
-
-    headline = "%s, %s %d, %s" % (WEEKDAYS[day.weekday()].upper(), 
-                                 MONTHS[day.month-1],
-                                 day.day,
-                                 day.year)
-
-    body += "\n%s\n\n" % (headline,)
-
-    for seminar in seminar_list:
-        if seminar[0] or seminar[1]:
-            body += "%5s%5s\n" % (seminar[0], seminar[1],)
-        if seminar[3]:
-            body += "       %s\n" % (seminar[3],)
-        if seminar[4]:
-            body += "       %s\n" % (seminar[4],)
-        if seminar[5]:
-            body += "       %s\n" % (seminar[5],)
-        if seminar[2]:
-            body += "       %s\n" % (seminar[2],)
-        if seminar[6]:
-            body += "       %s\n" % (seminar[6],)
-        body += "\n"
+def find_row(entry, header, class_=None):
+    divs = (
+        entry.findAll("p", class_=class_) if class_ is not None else entry.findAll("p")
+    )
+    for div in divs:
+        terms = div()
+        with contextlib.suppress(IndexError):
+            if terms[0].string.strip() == header:
+                return unescape_html(terms[1].string.strip())
+    return None
 
 
-# OUTPUT SEMINARS
+def parse_span(html, class_):
+    result = html.find("span", class_=class_)
+    result = "" if result is None else result.string
+    return result.strip()
 
-if options.output:
-    for line in body:
+
+def unescape_html(string):
+    return BeautifulSoup(string, features="lxml").string
+
+
+def format_seminar(seminar):
+    lines = []
+    if seminar["start_time"] or seminar["stop_time"]:
+        lines.append(f"{seminar['start_time']:>5} - {seminar['stop_time']:>5}")
+
+    lines.extend(
+        f"       {seminar[tag]}"
+        for tag in ["speaker", "title", "location", "series", "url"]
+        if seminar[tag]
+    )
+
+    return "\n".join(lines)
+
+
+def format_day(day, seminar_list):
+    pieces = [f"{f'{day:%A}'.upper()}, {day:%B} {day.day:d}, {day:%Y}"]
+    pieces.extend(format_seminar(seminar) for seminar in seminar_list)
+    text = "\n\n".join(pieces)
+    return f"\n{text}\n\n"
+
+
+def format_date_header(day):
+    return f"{day:%B} {day.day:d}, {day:%Y}"
+
+
+# OPEN OUTPUT FILE AND OUTPUT SEMINARS
+
+with open(args.output, mode="w", encoding="utf-8") as output:
+    for line in scrape_and_format():
         output.write(line)
-    output.close()
