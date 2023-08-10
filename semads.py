@@ -28,6 +28,8 @@ from urllib.request import urlopen  # Python 3
 
 from bs4 import BeautifulSoup
 
+ALTERNATE_SPEAKER_TAGS = ["Lecturer", "Doctoral student", "Respondent", "Participating"]
+
 locale.setlocale(locale.LC_TIME, locale=("en_US", "utf-8"))
 
 strptime = datetime.datetime.strptime
@@ -163,13 +165,13 @@ def parse_seminar(html):
     speaker = speaker.strip()
     title = title.strip()
 
-    for alternate_speaker_tag in ["Lecturer", "Doctoral student", "Respondent"]:
+    for alternate_speaker_tag in ALTERNATE_SPEAKER_TAGS:
         if speaker != "":
             break
         speaker = find_row(html, f"{alternate_speaker_tag}:")
     if speaker == "":
         print(
-            f"Warning: Did not find Lecturer/Doctoral Student/Respondent for {speaker}: {title}"
+            f"Warning: Did not find {'/'.join(ALTERNATE_SPEAKER_TAGS)} for {speaker}: {title}"
         )
 
     speaker = unescape_html(speaker)
@@ -212,7 +214,7 @@ def find_row(entry, header, class_=None):
         with contextlib.suppress(IndexError):
             if terms[0].string.strip() == header:
                 return unescape_html(terms[1].string.strip())
-    return None
+    return ""
 
 
 def parse_span(html, class_):
