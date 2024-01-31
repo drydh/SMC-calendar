@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # Usage: convert-tex-to-polopoly.sh in.tex > out.html
 
 sed -e 's/\$\([^$]*\)\$/<span\ class="math-tex">\\(\1\\)<\/span>/g' \

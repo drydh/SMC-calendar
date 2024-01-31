@@ -2,13 +2,10 @@
 #
 # Usage: calendar [extra options to seminarmailer.py]
 
-# ----------------------------------------------------------------------
-# KTH username
-user="username"
+# could replace by something like tomlq or jq, but this seems fine
+source config
 
 # ----------------------------------------------------------------------
-# Python setup
-python="python" # Replace with specific version (e.g. python2) if necessary
 
 # On MacOS X, may need updated SSL certificates.
 #
@@ -23,12 +20,8 @@ fi
 # ----------------------------------------------------------------------
 # Change to script directory
 
-cd $(dirname "${BASH_SOURCE[0]}")
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 install -d Archive
-
-semads="semads.py"               # Email creator script
-seminarmailer="seminarmailer.py" # Mailer script
-email_list="emails.txt"          # List of emails
 
 # ----------------------------------------------------------------------
 # Calculate the dates: (send on Wed-Sun previous week or Mon-Tue current week)
@@ -36,10 +29,10 @@ email_list="emails.txt"          # List of emails
 start_date=$(date -d 'next Wednesday - 2 days' +"%Y%m%d")
 end_date=$(date -d 'next Wednesday + 4 days' +"%Y%m%d")
 
-start_day=$(LANG=en_US; date -d ${start_date} +"%d %B")
-end_day=$(LANG=en_US; date -d ${end_date} +"%d %B")
-year=$(date -d ${start_date} +"%Y")
-week_number=$(date -d ${start_date} +"%V")
+start_day=$(LANG=en_US; date -d "${start_date}" +"%d %B")
+end_day=$(LANG=en_US; date -d "${end_date}" +"%d %B")
+year=$(date -d "${start_date}" +"%Y")
+week_number=$(date -d "${start_date}" +"%V")
 
 
 # ----------------------------------------------------------------------
@@ -54,15 +47,15 @@ $python "$semads" --start "${start_date}" --stop "${end_date}" --output "$messag
 # Prompt user to check message:
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-  open -a TextEdit $message_file
+  open -a TextEdit "$message_file"
 else
-  nano $message_file
+  nano "$message_file"
 fi
 
 response="No"
 while [ "$response" != "y" ]; do
   echo "Please check the email. Is it ok to send? (\"y\" to send, ctrl+c to exit)"
-  read response
+  read -r response
 done
 
 
@@ -72,5 +65,5 @@ done
 $python $seminarmailer \
 	--sendlist "${email_list}" \
 	--subject "Seminars, ${start_day} - ${end_day}" \
-    --message "${message_file}" \
+  --message "${message_file}" \
 	--username $user "$@"

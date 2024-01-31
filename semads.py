@@ -23,22 +23,25 @@ import argparse
 import contextlib
 import datetime
 import locale
-import re
-from urllib.request import urlopen  # Python 3
+from collections import defaultdict
 
-from bs4 import BeautifulSoup
+import smc_scraper
 
-ALTERNATE_SPEAKER_TAGS = ["Lecturer", "Doctoral student", "Respondent", "Participating"]
-
-locale.setlocale(locale.LC_TIME, locale=("en_US", "utf-8"))
-
-strptime = datetime.datetime.strptime
+for locale_ in [("en_GB", "utf-8"), ("en_US", "utf-8"), "C"]:
+    with contextlib.suppress(locale.Error):
+        locale.setlocale(locale.LC_TIME, locale=locale_)
+        break
+else:
+    print(
+        "Warning: month and day names may be localized incorrectly, consider:\n"
+        "\t`$ sudo locale-gen en_GB.utf8`"
+    )
 
 # READ COMMAND-LINE OPTIONS
 
 
 def parse_date(val):
-    return strptime(val, "%Y%m%d").date()
+    return datetime.date.fromisoformat(val)
 
 
 parser = argparse.ArgumentParser()
@@ -72,19 +75,12 @@ if args.start > args.stop:
     raise ValueError("Start date must be before stop date")
 
 
-no_entries_string = {
-    "en": "No calendar events were found",
-    "sv": "Kalenderhändelser saknas",
-}[args.lang]
-no_entries_re = re.compile(no_entries_string)
-
-
 def scrape_and_format():
+    seminars = smc_scraper.scrape(args)  # + iml_scraper.scrape(args)
+    seminars_by_day = expand_and_group_by_day(seminars)
 
-    seminars = scrape_seminars()
-
-    start_date = format_date_header(args.start)
-    stop_date = format_date_header(args.stop)
+    formatted_start = format_date_email(args.start)
+    formatted_stop = format_date_email(args.stop)
 
     body = "\n".join(
         [
@@ -92,7 +88,7 @@ def scrape_and_format():
             "========",
             "",
             "This is an automatically generated summary of the Stockholm Mathematics Centre",
-            f"web calendar for seminars from {start_date}, to {stop_date}.",
+            f"web calendar for seminars from {formatted_start}, to {formatted_stop}.",
             "",
             "Send subscription requests to kalendarium@math-stockholm.se.",
             "",
@@ -101,144 +97,33 @@ def scrape_and_format():
     )
 
     body += "".join(
-        format_day(day, seminar_list) for day, seminar_list in seminars if seminar_list
+        format_day(day, seminar_list)
+        for day, seminar_list in seminars_by_day
+        if seminar_list
     )
     return body
 
 
-def scrape_seminars():
-    """DOWNLOAD ALL SEMINARS BETWEEN START AND STOP DATES
+def expand_and_group_by_day(seminars):
+    seminars_by_day = defaultdict(list)
+    for seminar in seminars:
+        for day in days_list(seminar):
+            seminars_by_day[day].append(seminar)
+    return sorted(seminars_by_day.items())
 
-    This information is stored in the data structure
-        seminars = [[<date object>, [seminar, ...]], ...]
-    where seminar is a dictionary with keys
-     ["start_time", "stop_time", "series", "speaker", "title", "calender_url"]
-    """
 
-    seminars = []
-    day = args.start
+def days_list(seminar):
+    end_day = seminar.get("end_day")
+    day = seminar["day"]
+    if end_day is None:
+        return [day] if args.start <= day <= args.stop else []
     one_day = datetime.timedelta(days=1)
-    while day <= args.stop:
-        seminar_list = scrape_day(day)
-        if seminar_list:
-            seminars.append((day, seminar_list))
+    days = []
+    while day <= args.stop and day <= end_day:
+        if day >= args.start:
+            days.append(day)
         day += one_day
-    return seminars
-
-
-def scrape_day(day):
-    if args.lang == "en":
-        url = "https://www.math-stockholm.se/en/kalender"
-    else:
-        url = "https://www.math-stockholm.se/kalender"
-    url += f"?date={day.isoformat()}"
-    url += "&length=1"
-    # url += "&l=en_UK"
-
-    print(f"Fetching seminars for {day.isoformat()} ({args.lang})")
-
-    page = urlopen(url)
-    content = BeautifulSoup(page, features="lxml")
-
-    if content.find("h2", string=no_entries_re) or content.find(
-        "p", string=no_entries_re
-    ):
-        return []
-
-    return [
-        parse_seminar(seminar_el)
-        for seminar_el in content.findAll("li", {"class": "calendar__event"})
-    ]
-
-
-def parse_seminar(html):
-
-    series = html.find("p", class_="calendar__eventinfo--bold")
-    series = series.string.strip() if series is not None else ""
-
-    # Speaker and title
-    title = html.find("div").find("a")["title"]
-    try:
-        speaker, title = title.split(":", 1)
-    except ValueError:
-        speaker = ""
-    speaker = speaker.strip()
-    title = title.strip()
-
-    for alternate_speaker_tag in ALTERNATE_SPEAKER_TAGS:
-        if speaker != "":
-            break
-        speaker = find_row(html, f"{alternate_speaker_tag}:")
-    if speaker == "":
-        print(
-            f"Warning: Did not find {'/'.join(ALTERNATE_SPEAKER_TAGS)} for {speaker}: {title}"
-        )
-
-    speaker = unescape_html(speaker)
-    title = unescape_html(title)
-
-    start_time = parse_span(html, "startTime")
-    stop_time = parse_span(html, "endTime").lstrip("-").strip()
-
-    calendar_url = html.find("div").find("a")["href"]
-    calendar_url = calendar_url.split("?")[0]
-    calendar_url = f"https://www.math-stockholm.se{calendar_url}"
-
-    location = find_row(html, "Location:", "calendar__eventinfo-location")
-    video = find_row(html, "Video link:", "calendar__eventinfo-location")
-
-    if video:
-        location = f"{location} ({video})" if location else video
-    if not location:
-        print(
-            f"Warning: Did not find either location or video link for {speaker}: {title}"
-        )
-
-    return {
-        "start_time": start_time,
-        "stop_time": stop_time,
-        "series": series,
-        "speaker": speaker,
-        "title": title,
-        "location": location,
-        "url": calendar_url,
-    }
-
-
-def find_row(entry, header, class_=None):
-    divs = (
-        entry.findAll("p", class_=class_) if class_ is not None else entry.findAll("p")
-    )
-    for div in divs:
-        terms = div()
-        with contextlib.suppress(IndexError):
-            if terms[0].string.strip() == header:
-                return unescape_html(terms[1].string.strip())
-    return ""
-
-
-def parse_span(html, class_):
-    result = html.find("span", class_=class_)
-    result = "" if result is None else result.string
-    return result.strip()
-
-
-def unescape_html(string):
-    return BeautifulSoup(string, features="lxml").string
-
-
-def format_seminar(seminar):
-    lines = []
-    if seminar["start_time"] or seminar["stop_time"]:
-        lines.append(f"{seminar['start_time']:>5} - {seminar['stop_time']:>5}")
-
-    lines.extend(
-        f"       {seminar[tag]}"
-        for tag in ["speaker", "title", "location", "series", "url"]
-        if seminar[tag]
-    )
-
-    return "\n".join(lines)
+    return days
 
 
 def format_day(day, seminar_list):
@@ -248,12 +133,25 @@ def format_day(day, seminar_list):
     return f"\n{text}\n\n"
 
 
-def format_date_header(day):
+def format_seminar(seminar):
+    """
+    Expected input is a dictionary with type
+    {"day": date, "start_time": str, "stop_time": str, "end_day": None | date, fields: [str]]
+    """
+    # could be a custom dataclass
+
+    lines = []
+    if seminar["start_time"] or seminar["stop_time"]:
+        lines.append(f"{seminar['start_time']:>5} - {seminar['stop_time']:>5}")
+    lines.extend(f"       {field}" for field in seminar["fields"])
+    return "\n".join(lines)
+
+
+def format_date_email(day):
     return f"{day:%B} {day.day:d}, {day:%Y}"
 
 
 # OPEN OUTPUT FILE AND OUTPUT SEMINARS
-
+mail_body = scrape_and_format()
 with open(args.output, mode="w", encoding="utf-8") as output:
-    for line in scrape_and_format():
-        output.write(line)
+    output.write(mail_body)

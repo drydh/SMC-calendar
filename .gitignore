@@ -2,4 +2,7 @@ Archive
 local
 tex
 Mittag-Leffler
-emails.txt
+emails.txt*
+__pycache__
+.vscode
+config

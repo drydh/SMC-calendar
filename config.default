@@ -1,0 +1,15 @@
+# ----------------------------------------------------------------------
+# KTH username
+user="username"
+
+# ----------------------------------------------------------------------
+# Python executable
+python="python3" # Replace with specific version (e.g. python2) if necessary
+
+# ----------------------------------------------------------------------
+# Script paths
+
+semads="semads.py"               # Email creator script
+seminarmailer="seminarmailer.py" # Mailer script
+email_list="emails.txt"          # List of emails
+
