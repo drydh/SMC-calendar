@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import datetime
 import re
 
@@ -59,13 +60,24 @@ def trim_entry(entry):
 
 
 def parse_dates(string):
-    start, stop = string.split(" - ")
-    stop_date = datetime.datetime.strptime(stop, "%b %d %Y").date()
-    start_date = datetime.datetime.strptime(start, "%b %d").date()
-    start_date = datetime.date(stop_date.year, start_date.month, start_date.day)
+    if " - " in string:
+        start, stop = string.split(" - ")
+        stop_date = parse_full_date(stop)
+        start_date = datetime.datetime.strptime(start, "%b %d").date()
+        start_date = datetime.date(stop_date.year, start_date.month, start_date.day)
+    else:
+        stop_date = parse_full_date(string)
+        start_date = stop_date
     if start_date > stop_date and DEBUG:
         print(string)
     return (start_date, stop_date)
+
+
+def parse_full_date(date):
+    for format in ["%b %d %Y", "%B %d, %Y"]:
+        with contextlib.suppress(ValueError):
+            return datetime.datetime.strptime(date, format).date()
+    raise ValueError(f'"{date}" does not match any known format')
 
 
 def expand_program(program):
