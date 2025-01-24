@@ -77,7 +77,7 @@ if args.start > args.stop:
 
 def scrape_and_format():
     seminars = smc_scraper.scrape(args)  # + iml_scraper.scrape(args)
-    seminars_by_day = expand_and_group_by_day(seminars)
+    (seminars_by_day, multi_day) = expand_and_group_by_day(seminars)
 
     formatted_start = format_date_email(args.start)
     formatted_stop = format_date_email(args.stop)
@@ -101,15 +101,21 @@ def scrape_and_format():
         for day, seminar_list in seminars_by_day
         if seminar_list
     )
-    return body
+    return (body, multi_day)
 
 
 def expand_and_group_by_day(seminars):
+    multi_day = []
     seminars_by_day = defaultdict(list)
     for seminar in seminars:
-        for day in days_list(seminar):
+        days = days_list(seminar)
+        if len(days) > 1:
+            multi_day.append(
+                f"{seminar["fields"][0]} on {seminar["day"]} {seminar["start_time"]}"
+            )
+        for day in days:
             seminars_by_day[day].append(seminar)
-    return sorted(seminars_by_day.items())
+    return (sorted(seminars_by_day.items()), multi_day)
 
 
 def days_list(seminar):
@@ -152,6 +158,10 @@ def format_date_email(day):
 
 
 # OPEN OUTPUT FILE AND OUTPUT SEMINARS
-mail_body = scrape_and_format()
+(mail_body, multi_day) = scrape_and_format()
 with open(args.output, mode="w", encoding="utf-8") as output:
     output.write(mail_body)
+for seminar in multi_day:
+    print(f"WARNING: {seminar} spans multiple days, start and end times may be wrong")
+if len(multi_day) > 0:
+    print()
