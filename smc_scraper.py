@@ -10,13 +10,13 @@ from utility import unescape_html
 ALTERNATE_SPEAKER_TAGS = ["Lecturer", "Doctoral student", "Respondent", "Participating"]
 
 
-def scrape(args):
-    html = fetch_calendar(args)
+def scrape(start, stop, lang):
+    html = fetch_calendar(start, stop, lang)
 
     no_entries_string = {
         "en": r"No (upcoming |)calendar events were found",
         "sv": r"[Kk]alenderhändelser saknas",
-    }[args.lang]
+    }[lang]
     no_entries_re = re.compile(no_entries_string)
     if html.find("h2", string=no_entries_re) or html.find("p", string=no_entries_re):
         return []
@@ -120,12 +120,10 @@ def parse_span(html, class_):
     return result.strip()
 
 
-def fetch_calendar(args):
-    url = construct_url(args.start, args.stop, args.lang)
+def fetch_calendar(start, stop, lang):
+    url = construct_url(start, stop, lang)
 
-    print(
-        f"Fetching seminars for {args.start.isoformat()} - {args.stop.isoformat()} ({args.lang})"
-    )
+    print(f"Fetching seminars for {start.isoformat()} - {stop.isoformat()} ({lang})")
 
     raw_content = urlopen(url)
     return BeautifulSoup(raw_content, features="lxml")

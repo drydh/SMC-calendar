@@ -76,7 +76,8 @@ if args.start > args.stop:
 
 
 def scrape_and_format():
-    seminars = smc_scraper.scrape(args)  # + iml_scraper.scrape(args)
+    # + iml_scraper.scrape(args)
+    seminars = smc_scraper.scrape(start=args.start, stop=args.stop, lang=args.lang)
     (seminars_by_day, multi_day) = expand_and_group_by_day(seminars)
 
     formatted_start = format_date_email(args.start)

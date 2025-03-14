@@ -7,9 +7,11 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+import smc_scraper
+
 DEBUG = False
 
-SPEAKER_RE = re.compile("Speaker")
+SPEAKER_RE = re.compile("Speaker.*")
 DATE_RE = re.compile("Date:")
 TIME_RE = re.compile("Time:")
 
@@ -112,7 +114,10 @@ def parse_seminar(html):
     try:
         speaker = html.find("p", string=SPEAKER_RE).find_next("p").string.strip()
     except AttributeError:
-        speaker = ""
+        speaker, title = title.split(":", 1)
+        title = title.strip()
+        speaker = speaker.strip()
+
     other_fields = parse_other_fields(html.find("div", class_="event-info--seminar"))
     date = datetime.date.fromisoformat(other_fields.pop("Date"))
     time = other_fields.pop("Time")
@@ -157,7 +162,31 @@ def print_field(header, value):
         print(f"{header.title()}: {value}")
 
 
+def matches(in_calendar, entry):
+    matches_title = entry["title"].strip() == in_calendar["fields"][1].strip()
+    matches_speaker = entry["speaker"].strip() == in_calendar["fields"][0].strip()
+    matches_dates = (
+        entry["dates"][0] == entry["dates"][1] == in_calendar["day"]
+        and in_calendar["end_day"] is None
+    ) or (entry["dates"] == (in_calendar["day"], in_calendar["end_day"]))
+    matches_time = (
+        entry["time"] == f"{in_calendar['start_time']} - {in_calendar['stop_time']}"
+    )
+
+    return matches_title and matches_speaker and matches_dates and matches_time
+
+
 if __name__ == "__main__":
+    calendar = smc_scraper.scrape(
+        start=datetime.date.today(),
+        stop=datetime.date.today() + datetime.timedelta(days=14),
+        lang="en",
+    )
     for entry in fetch_entries():
-        print_formatted(entry)
         print(end="\n" * 3)
+        if "speaker" in entry and any(
+            matches(in_calendar, entry) for in_calendar in calendar
+        ):
+            print(f"'{entry['title']}' matches a calendar entry")
+            continue
+        print_formatted(entry)
