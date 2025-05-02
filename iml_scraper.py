@@ -65,8 +65,11 @@ def parse_dates(string):
     if " - " in string:
         start, stop = string.split(" - ")
         stop_date = parse_full_date(stop)
-        start_date = datetime.datetime.strptime(start, "%b %d").date()
-        start_date = datetime.date(stop_date.year, start_date.month, start_date.day)
+        # cannot avoid the string roundtrip here,
+        # see https://github.com/python/cpython/issues/70647, re parsing "Feb 29"
+        start_date = datetime.datetime.strptime(
+            f"{start} {stop_date.year}", "%b %d %Y"
+        ).date()
     else:
         stop_date = parse_full_date(string)
         start_date = stop_date
