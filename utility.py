@@ -6,5 +6,10 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 
-def unescape_html(string):
-    return BeautifulSoup(string, features="lxml").string
+def unescape_html(string: str) -> str:
+    if not string:
+        return ""
+    unescaped = BeautifulSoup(string, features="lxml").string
+    if unescaped is None:
+        raise ValueError(f"Failed to unescape: {string}")
+    return unescaped

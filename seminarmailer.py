@@ -47,8 +47,10 @@ def parse_emails(file):
                 expiry_date = expiry_date[0]
                 try:
                     expiry_date = date.fromisoformat(expiry_date)
-                except ValueError:
-                    print(f"second entry in {line} should be a date (YYYYMMDD)")
+                except ValueError as e:
+                    raise ValueError(
+                        f"second entry in {line} should be a date (YYYYMMDD)"
+                    ) from e
                 if expiry_date < date.today():
                     print(f"Remove: {email_address}, past expiry date {expiry_date}")
             elif re.fullmatch(EMAIL_REGEX, email_address) is None:

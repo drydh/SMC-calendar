@@ -23,7 +23,7 @@ to compile a weekly digest email.
 
 1. Add calendar entries to [Polopoly](https://www-edit.sys.kth.se/polopoly/CM) (Externa sajter -> Stockholms Matematikcentrum -> Calendar)
     - Entries from e-mails to `kalendarium@math-stockholm.se`.
-       - Possibly entries from [SU calendar](math.su.se) or general SU-emails (e.g., bachelor/master theses presentations, docent lectures, ...) that would be suitable for the calendar.
+       - Possibly entries from [SU calendar](https://math.su.se) or general SU-emails (e.g., bachelor/master theses presentations, docent lectures, ...) that would be suitable for the calendar.
        - Some seminar organizers add entries directly into Polopoly themselves.
        - See [Polopoly instructions](#polopoly-instructions) below for more information.
 

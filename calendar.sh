@@ -40,7 +40,7 @@ week_number=$(date -d "${start_date}" +"%V")
 
 echo "Fetching seminars from $start_date to $end_date"
 message_file="Archive/seminars${year}_W${week_number}.txt"
-$python "$semads" --start "${start_date}" --stop "${end_date}" --output "$message_file" # --lang sv
+$python "$semads" --start "${start_date}" --stop-seminars "${end_date}" --output "$message_file" # --lang sv
 
 
 # ----------------------------------------------------------------------
@@ -62,8 +62,8 @@ done
 # ----------------------------------------------------------------------
 # Send email message:
 
-$python $seminarmailer \
+$python "$seminarmailer" \
 	--sendlist "${email_list}" \
-	--subject "Seminars, ${start_day} - ${end_day}" \
+	--subject "Seminars, ${start_day} - ${end_day}, and upcoming events" \
   --message "${message_file}" \
-	--username $user "$@"
+	--username "$user" "$@"

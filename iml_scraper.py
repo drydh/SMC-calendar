@@ -75,7 +75,7 @@ def parse_dates(string):
         start_date = stop_date
     if start_date > stop_date and DEBUG:
         print(string)
-    return (start_date, stop_date)
+    return start_date, stop_date
 
 
 def parse_full_date(date):
@@ -182,13 +182,17 @@ def matches(in_calendar, entry):
 if __name__ == "__main__":
     calendar = smc_scraper.scrape(
         start=datetime.date.today(),
-        stop=datetime.date.today() + datetime.timedelta(days=14),
+        stop_seminars=datetime.date.today() + datetime.timedelta(days=14),
+        stop_events=datetime.date.today() + datetime.timedelta(days=14),
         lang="en",
+        max_events=None,
     )
     for entry in fetch_entries():
         print(end="\n" * 3)
         if "speaker" in entry and any(
-            matches(in_calendar, entry) for in_calendar in calendar
+            matches(in_calendar, entry)
+            for calendar_section in calendar
+            for in_calendar in calendar_section
         ):
             print(f"'{entry['title']}' matches a calendar entry")
             continue

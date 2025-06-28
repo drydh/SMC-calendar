@@ -1,23 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# SEMADS.PY
-#
-# This script downloads the calendar of the SMC and
-# formats the information as a text file.
-#
+"""This script downloads the calendar of the SMC and
+formats the information as a text file.
+
 # Usage
-#
-# python semads.py --start 20100301 --stop 20100308 --output message.txt
-#
-# The above run will download all items in the calendar from 20100301
-# (March 1, 2010) to 20100308 (March 8, 2010), output the generated
-# text file in message.txt.
-#
+ python semads.py --start 20100301 --stop 20100308 --output message.txt
+
+ The above run will download all items in the calendar from 20100301
+ (March 1, 2010) to 20100308 (March 8, 2010), output the generated
+ text file in message.txt.
+
 # Compatibility
-#
-# Install required packages using:
-# python -m pip install -r requirements.txt
+
+ Install required packages using:
+ python -m pip install -r requirements.txt
+"""
 
 import argparse
 import contextlib
@@ -26,6 +24,8 @@ import locale
 from collections import defaultdict
 
 import smc_scraper
+from smc_scraper import Seminar
+
 
 for locale_ in [("en_GB", "utf-8"), ("en_US", "utf-8"), "C"]:
     with contextlib.suppress(locale.Error):
@@ -49,7 +49,16 @@ parser.add_argument(
     "--start", type=parse_date, help="start date", metavar="YYYYMMDD", required=True
 )
 parser.add_argument(
-    "--stop", type=parse_date, help="stop date", metavar="YYYYMMDD", required=True
+    "--stop-events",
+    type=parse_date,
+    help="stop date for events",
+    metavar="YYYYMMDD",
+)
+parser.add_argument(
+    "--stop-seminars",
+    type=parse_date,
+    help="stop date for seminars",
+    metavar="YYYYMMDD",
 )
 parser.add_argument(
     "--output",
@@ -66,32 +75,63 @@ parser.add_argument(
     metavar="en|sv",
     default="en",
 )
+parser.add_argument(
+    "--max-events",
+    action="store",
+    type=int,
+    help="maximum number of events, not counting ties (events before the seminar stop date are always included)",
+    default=5,
+)
 
 args = parser.parse_args()
 
+if args.stop_events is None:
+    args.stop_events = args.start + datetime.timedelta(days=62)  # 9 weeks, ~2 months
+
+if args.stop_seminars is None:
+    args.stop_seminars = args.start + datetime.timedelta(days=6)
+
 # Argument validation
 
-if args.start > args.stop:
+if args.start > args.stop_events or args.start > args.stop_seminars:
     raise ValueError("Start date must be before stop date")
 
 
 def scrape_and_format():
     # + iml_scraper.scrape(args)
-    seminars = smc_scraper.scrape(start=args.start, stop=args.stop, lang=args.lang)
-    (seminars_by_day, multi_day) = expand_and_group_by_day(seminars)
+    (events, seminars) = smc_scraper.scrape(
+        start=args.start,
+        stop_events=args.stop_events,
+        stop_seminars=args.stop_seminars,
+        lang=args.lang,
+        max_events=args.max_events,
+    )
+    seminars_by_day = expand_and_group_by_day(seminars)
 
     formatted_start = format_date_email(args.start)
-    formatted_stop = format_date_email(args.stop)
+    formatted_stop = format_date_email(args.stop_seminars)
 
     body = "\n".join(
+        [
+            "This is an automatically generated summary of the Stockholm Mathematics Centre web calendar.",
+            "",
+            "Send subscription requests to kalendarium@math-stockholm.se.",
+            "",
+            "",
+        ]
+    )
+    if events:
+        body += "\n".join(["EVENTS", "======", "", ""])
+        for event in events:
+            body += event.format() + "\n\n"
+        body += "\n\n"
+
+    body += "\n".join(
         [
             "SEMINARS",
             "========",
             "",
-            "This is an automatically generated summary of the Stockholm Mathematics Centre",
-            f"web calendar for seminars from {formatted_start}, to {formatted_stop}.",
-            "",
-            "Send subscription requests to kalendarium@math-stockholm.se.",
+            f"Seminars from {formatted_start}, to {formatted_stop}.",
             "",
             "",
         ]
@@ -102,56 +142,21 @@ def scrape_and_format():
         for day, seminar_list in seminars_by_day
         if seminar_list
     )
-    return (body, multi_day)
+    return body
 
 
 def expand_and_group_by_day(seminars):
-    multi_day = []
     seminars_by_day = defaultdict(list)
     for seminar in seminars:
-        days = days_list(seminar)
-        if len(days) > 1:
-            multi_day.append(
-                f"{seminar["fields"][0]} on {seminar["day"]} {seminar["start_time"]}"
-            )
-        for day in days:
-            seminars_by_day[day].append(seminar)
-    return (sorted(seminars_by_day.items()), multi_day)
+        seminars_by_day[seminar.day].append(seminar)
+    return sorted(seminars_by_day.items())
 
 
-def days_list(seminar):
-    end_day = seminar.get("end_day")
-    day = seminar["day"]
-    if end_day is None:
-        return [day] if args.start <= day <= args.stop else []
-    one_day = datetime.timedelta(days=1)
-    days = []
-    while day <= args.stop and day <= end_day:
-        if day >= args.start:
-            days.append(day)
-        day += one_day
-    return days
-
-
-def format_day(day, seminar_list):
+def format_day(day, seminar_list: list[Seminar]):
     pieces = [f"{f'{day:%A}'.upper()}, {day:%B} {day.day:d}, {day:%Y}"]
-    pieces.extend(format_seminar(seminar) for seminar in seminar_list)
+    pieces.extend(seminar.format() for seminar in seminar_list)
     text = "\n\n".join(pieces)
     return f"\n{text}\n\n"
-
-
-def format_seminar(seminar):
-    """
-    Expected input is a dictionary with type
-    {"day": date, "start_time": str, "stop_time": str, "end_day": None | date, fields: [str]]
-    """
-    # could be a custom dataclass
-
-    lines = []
-    if seminar["start_time"] or seminar["stop_time"]:
-        lines.append(f"{seminar['start_time']:>5} - {seminar['stop_time']:>5}")
-    lines.extend(f"       {field}" for field in seminar["fields"])
-    return "\n".join(lines)
 
 
 def format_date_email(day):
@@ -159,10 +164,6 @@ def format_date_email(day):
 
 
 # OPEN OUTPUT FILE AND OUTPUT SEMINARS
-(mail_body, multi_day) = scrape_and_format()
+mail_body = scrape_and_format()
 with open(args.output, mode="w", encoding="utf-8") as output:
     output.write(mail_body)
-for seminar in multi_day:
-    print(f"WARNING: {seminar} spans multiple days, start and end times may be wrong")
-if len(multi_day) > 0:
-    print()
