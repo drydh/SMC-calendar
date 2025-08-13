@@ -39,7 +39,7 @@ FQ="'"
 
 cat "$@" | split_paragraphs |
 sed -E -e 's/\$([^$]*)\$/<span\ class="math-tex">\\(\1\\)<\/span>/g' \
-	   -e 's/\\(emph|textit){([^}]*)}/<i>\2<\/i>/g' \
+	   -e 's/\\(emph|textit)\{([^}]*)\}/<i>\2<\/i>/g' \
 	   -e "s/$BQ$BQ([^$BQ$FQ]*)$FQ$FQ/“\1”/g" \
 	   -e "s/$BQ([^$BQ$FQ]*)$FQ/‘\1’/g" \
        -e 's/([^\\])\\ /\1 /g' -e 's/~/\&nbsp;/g'
