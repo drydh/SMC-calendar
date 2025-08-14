@@ -155,7 +155,7 @@ def print_formatted(entry):
         dates_string = f"{dates[0]} -- {dates[1]}"
     print_field("dates", dates_string)
     print_field("time", entry.pop("time", None))
-    entry |= entry.pop("other_fields", {})
+    entry.update( entry.pop("other_fields", {}) )
     for header, value in entry.items():
         print_field(header, value)
 

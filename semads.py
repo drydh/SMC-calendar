@@ -16,6 +16,7 @@ formats the information as a text file.
  Install required packages using:
  python -m pip install -r requirements.txt
 """
+from __future__ import annotations
 
 import argparse
 import contextlib
@@ -41,7 +42,19 @@ else:
 
 
 def parse_date(val):
-    return datetime.date.fromisoformat(val)
+    """
+    Like datetime.date.fromisoformat(), but also supports YYYYMMDD
+    in Python < 3.11.
+    """
+    # If it looks like YYYYMMDD (8 digits, no separators)
+    if len(val) == 8 and val.isdigit():
+        try:
+            return datetime.datetime.strptime(val, "%Y%m%d").date()
+        except ValueError:
+            # Fall through to raise same type of error as fromisoformat
+            raise ValueError(f"Invalid isoformat string: {val}")
+    else:
+        return datetime.date.fromisoformat(val)
 
 
 parser = argparse.ArgumentParser()
