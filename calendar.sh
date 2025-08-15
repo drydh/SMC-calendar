@@ -7,7 +7,8 @@ source config
 
 # ----------------------------------------------------------------------
 
-# On MacOS X, may need updated SSL certificates.
+# On MacOS X, may need updated SSL certificates if using the version of
+# python that is shipped with Mac OS X / installed via Xcode.
 #
 # This needs Python package certifi which can be install using
 # > python -m pip install certifi
