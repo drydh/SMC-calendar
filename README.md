@@ -46,15 +46,16 @@ Bash script `calendar.sh` facilitates steps 3-5. See [Usage](#usage).
 ## Usage
 
 1. Make sure `calendar.sh`, `semads.py` and `seminarmailer.py` are in the same directory.
-2. Update `"user"` in `calendar.sh` file to reflect your KTH username.
-3. Update `"python"` in `calendar.sh` file if necessary.
-4. Make sure that the `calendar.sh` file is executable (e.g. use `chmod +x calendar.sh`).
-5. Run `./calendar.sh` from the directory containing the files.
-6. The script will create the week's email and display it in `nano` editor.
-7. Check the email and press `ctrl+o` to save any changes.
-8. When the email has been checked press `ctrl+x`.
-9. Press `y` to send the email or `ctrl+c` to exit.
-10. When prompted, enter your KTH password to send the email.
+2. Copy `config.default` to `config`.
+3. Update `"user"` in `config` to reflect your KTH username.
+4. Update `"python"` in `config` if necessary.
+5. Make sure that the `calendar.sh` file is executable (e.g. use `chmod +x calendar.sh`).
+6. Run `./calendar.sh` from the directory containing the files.
+7. The script will create the week's email and display it in `nano` editor (TextEdit on MacOS).
+8. Check the email and press `ctrl+o` to save any changes (in `nano`).
+9. When the email has been checked press `ctrl+x` (in `nano`).
+10. Press `y` to send the email or `ctrl+c` to exit.
+11. When prompted, enter your KTH password to send the email.
 
 Notes:
 
@@ -80,7 +81,7 @@ Notes:
 
 Notes:
 
-- It can take a few minutes before changes in PoloPoly are reflected on the webpages.
+- It can take a few minutes before changes in Polopoly are reflected on the webpages.
 - ID's, linking of pages, parents, copy & paste, ...
 - When copying an article, hyperlinks are not copied but links to the same object, that is, changes in the hyperlink in the copied article also results in changes to the original.  Thus, should delete hyperlink and then add a new one. (typical scenario: DiVA-link in licentiate seminars / dissertations)
 - Language settings ...
