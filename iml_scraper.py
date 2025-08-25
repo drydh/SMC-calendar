@@ -118,9 +118,12 @@ def parse_seminar(html):
     try:
         speaker = html.find("p", string=SPEAKER_RE).find_next("p").string.strip()
     except AttributeError:
-        speaker, title = title.split(":", 1)
-        title = title.strip()
-        speaker = speaker.strip()
+        if ":" in title:
+            speaker, title = title.split(":", 1)
+            title = title.strip()
+            speaker = speaker.strip()
+        else:
+            speaker = None
 
     other_fields = parse_other_fields(html.find("div", class_="event-info--seminar"))
     date = datetime.date.fromisoformat(other_fields.pop("Date"))
@@ -165,17 +168,20 @@ def print_field(header, value):
     if value is not None:
         print(f"{header.title()}: {value}")
 
+def match_str(str1,str2):
+    return (str1 or "").strip() == (str2 or "").strip()
 
 def matches(in_calendar, entry):
-    matches_title = entry["title"].strip() == in_calendar["fields"][1].strip()
-    matches_speaker = entry["speaker"].strip() == in_calendar["fields"][0].strip()
-    matches_dates = (
-        entry["dates"][0] == entry["dates"][1] == in_calendar["day"]
-        and in_calendar["end_day"] is None
-    ) or (entry["dates"] == (in_calendar["day"], in_calendar["end_day"]))
-    matches_time = (
-        entry["time"] == f"{in_calendar['start_time']} - {in_calendar['stop_time']}"
-    )
+    matches_title = match_str(entry["title"], in_calendar.title)
+    matches_speaker = match_str(entry["speaker"], in_calendar.speaker)
+    if isinstance(in_calendar, smc_scraper.Event):
+        matches_dates = entry["dates"] == (in_calendar.day, in_calendar.end_day)
+        matches_time = True
+    elif isinstance(in_calendar, smc_scraper.Seminar):
+        matches_dates = entry["dates"][0] == entry["dates"][1] == in_calendar.day
+        matches_time = entry["time"] == f"{in_calendar.start_time} - {in_calendar.end_time}"
+    else:
+        raise ValueError(f'"{in_calendar}" of unknown class')
 
     return matches_title and matches_speaker and matches_dates and matches_time
 
