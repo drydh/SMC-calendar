@@ -103,10 +103,11 @@ def parse_seminars(html):
             continue
         seminar = parse_seminar(
             BeautifulSoup(requests.get(link).text, features="lxml")
-        ) | {
+        )
+        seminar.update( {
             "link": link,
             "category": "IML Seminar",
-        }
+        } )
         seminars.append(seminar)
     return seminars
 
