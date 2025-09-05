@@ -173,15 +173,24 @@ def match_str(str1,str2):
 
 def matches(in_calendar, entry):
     matches_title = match_str(entry["title"], in_calendar.title)
-    matches_speaker = match_str(entry["speaker"], in_calendar.speaker)
     if isinstance(in_calendar, smc_scraper.Event):
-        matches_dates = entry["dates"] == (in_calendar.day, in_calendar.end_day)
+        matches_speaker = True
+        matches_dates = entry["dates"] == (in_calendar.start_day,
+                                           in_calendar.end_day)
         matches_time = True
     elif isinstance(in_calendar, smc_scraper.Seminar):
+        matches_speaker = match_str(entry["speaker"], in_calendar.speaker)
         matches_dates = entry["dates"][0] == entry["dates"][1] == in_calendar.day
-        matches_time = entry["time"] == f"{in_calendar.start_time} - {in_calendar.end_time}"
+        matches_time = entry["time"] == f"{in_calendar.start_time.strftime('%H:%M') if in_calendar.start_time else ''} - {in_calendar.end_time.strftime('%H:%M') if in_calendar.end_time else ''}"
     else:
         raise ValueError(f'"{in_calendar}" of unknown class')
+
+    if( matches_title and matches_speaker and not (matches_dates and matches_time) ):
+        print( "Potential match but not identical date and time:" )
+        print( f"{entry['dates']}, {entry['time']}" )
+    if( not matches_title and matches_speaker and matches_dates and matches_time ):
+        print( "Matches speaker and time but not identical title." )
+        print( f"SMC calendar title '{in_calendar.title}'." )
 
     return matches_title and matches_speaker and matches_dates and matches_time
 
