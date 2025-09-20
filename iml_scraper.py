@@ -9,19 +9,31 @@ from bs4 import BeautifulSoup
 
 import smc_scraper
 
+import sys
+
 DEBUG = False
 
 SPEAKER_RE = re.compile("Speaker.*")
 DATE_RE = re.compile("Date:")
 TIME_RE = re.compile("Time:")
 
+try:
+    import requests_cache
+    session = requests_cache.CachedSession(cache_name='iml_cache', backend='sqlite')
+    print(f"Using cache ({session.cache.db_path}).", file=sys.stderr)
+    def is_cached(response):
+        return response.from_cache
+except ImportError:
+    session = requests.Session()
+    def is_cached(response):
+        return False
 
 def fetch_entries(
     start=datetime.date.today(),
     stop=datetime.date.today() + datetime.timedelta(days=14),
 ):
     filtered = [
-        entry for entry in fetch_all_entries() if overlaps(start, stop, entry["dates"])
+        entry for entry in fetch_all_programs() if overlaps(start, stop, entry["dates"])
     ]
     expanded = [
         sub_entry
@@ -38,19 +50,27 @@ def overlaps(start, stop, dates):
     return dates[1] >= start and (stop is None or stop >= dates[0])
 
 
-def fetch_all_entries():
-    response = requests.get(api_url(1))
+######################################################################
+# Fetch JSON from IML WordPress
+######################################################################
+
+def fetch_all_programs():
+    print("Fetching IML site.", file=sys.stderr)
+    response = session.get(api_program_url(1))
     pages_count = int(response.headers["X-WP-TotalPages"])
+    print(f"  Fetching {pages_count} pages.", file=sys.stderr)
     return [
         trim_entry(entry)
         for page in range(1, pages_count + 1)
-        for entry in requests.get(api_url(page)).json()
+        for entry in session.get(api_program_url(page)).json()
     ]
 
 
-def api_url(page):
-    return f"https://www.mittag-leffler.se/wp-json/wp/v2/ventla_program?per_page=100&page={page}&lang=en"
+def api_program_url(page):
+    return f"https://www.mittag-leffler.se/wp-json/wp/v2/ventla_program?per_page=100&page={page}&lang=en&_fields=title.rendered,link,category.name,custom_date"
 
+
+#################################################################
 
 def trim_entry(entry):
     return {
@@ -85,8 +105,14 @@ def parse_full_date(date):
     raise ValueError(f'"{date}" does not match any known format')
 
 
+######################################################################
+# Parse IML program HTML page.
+######################################################################
+
 def expand_program(program):
-    link_content = requests.get(program["link"]).text
+    print(f"Fetching program '{program['title']}' ({program['dates'][0]} - {program['dates'][1]}).", file=sys.stderr)
+    link_content = session.get(program["link"]).text
+    print(f"  Fetching seminars.", file=sys.stderr)
     seminars = parse_seminars(BeautifulSoup(link_content, features="lxml"))
     return [program] + seminars
 
@@ -101,9 +127,10 @@ def parse_seminars(html):
         if link is None:
             print(html)
             continue
-        seminar = parse_seminar(
-            BeautifulSoup(requests.get(link).text, features="lxml")
-        )
+        print(f"    * {link}", file=sys.stderr, end='')
+        response = session.get(link,headers={"Accept-Encoding": "gzip, deflate, br"})
+        print(" [CACHED]" if is_cached(response) else "", file=sys.stderr)
+        seminar = parse_seminar(BeautifulSoup(response.text, features="lxml"))
         seminar.update( {
             "link": link,
             "category": "IML Seminar",
@@ -147,6 +174,9 @@ def parse_other_fields(html):
         ret[key.rstrip(":")] = value
     return ret
 
+######################################################################
+# Format output
+######################################################################
 
 def print_formatted(entry):
     print(entry.pop("title"))
@@ -196,6 +226,7 @@ def matches(in_calendar, entry):
 
 
 if __name__ == "__main__":
+    print("Fetching SMC site (for comparison).", file=sys.stderr)
     calendar = smc_scraper.scrape(
         start=datetime.date.today(),
         stop_seminars=datetime.date.today() + datetime.timedelta(days=14),
