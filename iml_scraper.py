@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import contextlib
-import datetime
+import datetime, time
 import re
 
 import requests
@@ -17,16 +17,56 @@ SPEAKER_RE = re.compile("Speaker.*")
 DATE_RE = re.compile("Date:")
 TIME_RE = re.compile("Time:")
 
+def utc2local(utc):
+    epoch = time.mktime(utc.timetuple())
+    offset = datetime.datetime.fromtimestamp(epoch) - datetime.datetime.utcfromtimestamp(epoch)
+    return utc + offset
+
+# IML web server is very slow. It also doesn't support neither Etag nor
+# last-modified. As a compromise we cache all pages but reload those that
+# change often and those that are near in time.
 try:
     import requests_cache
     session = requests_cache.CachedSession(cache_name='iml_cache', backend='sqlite')
     print(f"Using cache ({session.cache.db_path}).", file=sys.stderr)
     def is_cached(response):
         return response.from_cache
+    def cache_info(response):
+        if( is_cached(response) ):
+            if( not response.expires ):
+                when = "forever"
+            else:
+                expiredate = utc2local(response.expires)
+                if( expiredate.date() != datetime.date.today() ):
+                    when = f"until {expiredate.date().isoformat()}"
+                else:
+                    when = f"until {expiredate.time().isoformat(timespec='minutes')}"
+            return f" [CACHED {when}{' expired!' if response.is_expired else ''}]"
+        else:
+            return ""
+    def set_expire(response,forever=False,date=datetime.datetime.utcnow(),days=0,hours=0,minutes=0):
+        # We update the cached response expiry date if either it is forever
+        # and we don't want it to be cached forever, or if it is not forever
+        # and we want it to be cached forever. In the other cases we only
+        # shorten the expiry date, never extend it. Otherwise cached entries
+        # could get an extended expiration date without ever being reloaded.
+        old_expires = response.expires
+        if( forever ):
+            new_expires = None
+            update = ( old_expires != None )
+        else:
+            new_expires = date+datetime.timedelta(days=days,hours=hours,minutes=minutes)
+            update = ( old_expires == None or new_expires < old_expires )
+        if( update ):
+            session.cache.save_response(response,cache_key=response.cache_key,expires=new_expires)
 except ImportError:
     session = requests.Session()
     def is_cached(response):
         return False
+    def cache_info(response):
+        return ""
+    def set_expire(response,date=None,days=0,hours=0,minutes=0):
+        pass
 
 def fetch_entries(
     start=datetime.date.today(),
@@ -55,8 +95,10 @@ def overlaps(start, stop, dates):
 ######################################################################
 
 def fetch_all_programs():
-    print("Fetching IML site.", file=sys.stderr)
+    print("Fetching IML site.", file=sys.stderr, end='')
     response = session.get(api_program_url(1))
+    set_expire( response, hours=2 )
+    print(cache_info(response), file=sys.stderr)
     pages_count = int(response.headers["X-WP-TotalPages"])
     print(f"  Fetching {pages_count} pages.", file=sys.stderr)
     return [
@@ -110,8 +152,11 @@ def parse_full_date(date):
 ######################################################################
 
 def expand_program(program):
-    print(f"Fetching program '{program['title']}' ({program['dates'][0]} - {program['dates'][1]}).", file=sys.stderr)
-    link_content = session.get(program["link"]).text
+    print(f"Fetching program '{program['title']}' ({program['dates'][0]} - {program['dates'][1]}).", file=sys.stderr, end='')
+    response = session.get(program["link"])
+    set_expire( response, minutes=10 )
+    print(cache_info(response), file=sys.stderr)
+    link_content = response.text
     print(f"  Fetching seminars.", file=sys.stderr)
     seminars = parse_seminars(BeautifulSoup(link_content, features="lxml"))
     return [program] + seminars
@@ -129,12 +174,19 @@ def parse_seminars(html):
             continue
         print(f"    * {link}", file=sys.stderr, end='')
         response = session.get(link,headers={"Accept-Encoding": "gzip, deflate, br"})
-        print(" [CACHED]" if is_cached(response) else "", file=sys.stderr)
+        print(cache_info(response), file=sys.stderr)
         seminar = parse_seminar(BeautifulSoup(response.text, features="lxml"))
         seminar.update( {
             "link": link,
             "category": "IML Seminar",
         } )
+        days = (seminar["dates"][0] - datetime.date.today()).days
+        if( days < 0 ):
+            set_expire( response, forever=True )
+        elif( days <= 14 ):
+            set_expire( response, hours=1 )
+        else:
+            set_expire( response, days=days-14 )
         seminars.append(seminar)
     return seminars
 
