@@ -65,7 +65,7 @@ except ImportError:
         return False
     def cache_info(response):
         return ""
-    def set_expire(response,date=None,days=0,hours=0,minutes=0):
+    def set_expire(response,forever=False,date=None,days=0,hours=0,minutes=0):
         pass
 
 def fetch_entries(
