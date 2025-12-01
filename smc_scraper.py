@@ -31,16 +31,12 @@ class Event(NamedTuple):
 
     def format(self):
         dates = Event.format_date_range(self.start_day, self.end_day)
+        description = f"{self.series}, {self.title}"
         if self.series == "Conference":
-            description = next(
-                self.title
-                for word in CONFERENCE_LIKE_WORDS
-                if self.title.startswith(word)
-            )
-        else:
-            description = None
-        if description is None:
-            description = f"{self.series}, {self.title}"
+            for word in CONFERENCE_LIKE_WORDS:
+                if self.title.startswith(word):
+                    description = self.title
+                    break
         lines = [f"* {dates}, {description}"]
         if self.location is not None:
             lines.append(f"{INDENT}{self.location}")
