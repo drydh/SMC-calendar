@@ -65,6 +65,6 @@ done
 
 $python "$seminarmailer" \
 	--sendlist "${email_list}" \
-	--subject "Seminars, ${start_day} - ${end_day}, and upcoming events" \
+	--subject "Seminars, ${start_day} - ${end_day}, upcoming events and positions" \
   --message "${message_file}" \
 	--username "$user" "$@"

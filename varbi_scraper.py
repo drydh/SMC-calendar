@@ -108,7 +108,7 @@ class TooManyRequests(Exception):
 # Fetch JSON from Varbi
 ######################################################################
 
-def fetch_all_math_jobs():
+def find_varbi_jobs():
     math_jobs = []
 
     for entry in fetch_all_jobs():
@@ -169,7 +169,7 @@ def fetch_all_math_jobs():
     return math_jobs
 
 def fetch_all_jobs():
-    print("Fetching all jobs.", file=sys.stderr)
+    print("Fetching all VARBI jobs:", file=sys.stderr)
     return [ trim_job_entry(entry)
              for (org_id,org) in organizations.items()
              for (cat_id,cat) in org["categories"].items()
@@ -225,16 +225,22 @@ def trim_job_entry(entry):
 # Format output
 ######################################################################
 
-def print_job(job):
+def format_job(job):
     uni = job["university"]
     deadline = job["deadline"]
     title = job["title"]
     url = job["ad_url"]
 
-    print( f"{deadline.date().isoformat()}, {uni}, {title}, {url}" )
+    return f"* {deadline.date().isoformat()}, {uni}, {title}, {url}"
+
+######################################################################
+# Retrieve jobs (file + web)
+######################################################################
 
 def extra_jobs():
-    with open('extra_jobs.csv', newline='') as csvfile:
+    filename="extra_jobs.csv"
+    print(f"Fetching jobs from '{filename}'.", file=sys.stderr)
+    with open(filename, newline='') as csvfile:
         reader = csv.DictReader( csvfile )
         for job in reader:
             publish = datetime.date.fromisoformat(job["publish"])
@@ -246,7 +252,11 @@ def extra_jobs():
                         "title": job["title"],
                         "ad_url": job["url"] }
 
+def scrape():
+    jobs = list(extra_jobs()) + find_varbi_jobs()
+    jobs = sorted(jobs, key=lambda d: d['deadline'].date())
+    return jobs
+
 if __name__ == "__main__":
-    jobs = list(extra_jobs()) + fetch_all_math_jobs()
-    for job in sorted(jobs, key=lambda d: d['deadline'].date()):
-        print_job( job )
+    for job in scrape():
+        print( format_job( job ) )

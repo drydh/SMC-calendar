@@ -27,6 +27,9 @@ from collections import defaultdict
 import smc_scraper
 from smc_scraper import Seminar
 
+import varbi_scraper
+from varbi_scraper import format_job
+
 
 for locale_ in [("en_GB", "utf-8"), ("en_US", "utf-8"), "C"]:
     with contextlib.suppress(locale.Error):
@@ -119,6 +122,7 @@ def scrape_and_format():
         lang=args.lang,
         max_events=args.max_events,
     )
+    jobs = varbi_scraper.scrape()
     seminars_by_day = expand_and_group_by_day(seminars)
 
     formatted_start = format_date_email(args.start)
@@ -137,6 +141,12 @@ def scrape_and_format():
         body += "\n".join(["EVENTS", "======", "", ""])
         for event in events:
             body += event.format() + "\n\n"
+        body += "\n"
+
+    if jobs:
+        body += "\n".join(["POSITIONS", "=========", "", ""])
+        for job in jobs:
+            body += format_job( job ) + "\n"
         body += "\n\n"
 
     body += "\n".join(
