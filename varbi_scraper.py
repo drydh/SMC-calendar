@@ -80,23 +80,33 @@ organizations = {
 
 try:
     import requests_cache
-    session = requests_cache.CachedSession(cache_name='varbi_cache', backend='sqlite')
+    session = requests_cache.CachedSession(cache_name='varbi_cache', backend='sqlite',
+                                           expire_after=60*30) # Expire after 30 minutes
     print(f"Using cache ({session.cache.db_path}).", file=sys.stderr)
     def is_cached(response):
         return response.from_cache
+    def get_url( url, **kw ):
+        response = session.get( url, **kw )
+        if( response.status_code == 429 ):
+            raise TooManyRequests(response)
+        print(" [CACHED] " if is_cached(response) else "", end="", file=sys.stderr)
+        return response
 except ImportError:
     session = requests.Session()
     def is_cached(response):
         return False
-
-######################################################################
-# Fetch JSON from Varbi
-######################################################################
+    def get_url( url, **kw ):
+        return session.get( url, **kw )
 
 class TooManyRequests(Exception):
     """Too many requests"""
     def __init__(self, response):
         super().__init__(f'Too many requests. Retry after: {response.headers["Retry-After"] if "Retry-After" in response.headers else "(unknown)"} s')
+
+
+######################################################################
+# Fetch JSON from Varbi
+######################################################################
 
 def fetch_all_math_jobs():
     math_jobs = []
@@ -115,10 +125,7 @@ def fetch_all_math_jobs():
             else:
                 # Fetch html ad and investigate.
                 print(f"fetching... ", end="", file=sys.stderr)
-                response = session.get( entry["ad_url"] )
-                if( response.status_code == 429 ):
-                    raise TooManyRequests(response)
-                print(" [CACHED] " if is_cached(response) else "", end="", file=sys.stderr)
+                response = get_url( entry["ad_url"] )
                 soup = BeautifulSoup(response.text, features='lxml')
 
                 # Look for PhD subjects
@@ -184,10 +191,7 @@ def fetch_all_pages(url, headers, info_str):
     limit = 100
     offset = 0
     while True:
-       response = session.get(url+f"&limit={limit}&offset={offset}",headers=headers)
-       if( response.status_code == 429 ):
-           raise TooManyRequests(response)
-       print(" [CACHED]" if is_cached(response) else "", end="", file=sys.stderr)
+       response = get_url( url+f"&limit={limit}&offset={offset}", headers=headers )
        json = response.json()
        yield from json["data"]
        if offset+limit >= json["meta"]["total"]:
