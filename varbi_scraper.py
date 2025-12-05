@@ -6,7 +6,7 @@ import re
 import csv
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup # >= 4.4.0.
 
 import sys
 
@@ -34,10 +34,14 @@ title_weak_keywords = ["mathematic", # s, al
 
 ad_strong_keywords = ["department of mathematics", "institutionen för matematik", "KTH mathematics", "computational mathematics", "applied mathematics"]
 ad_weak_keywords = ["mathematics", "matematik"] # Don't want "mathematical"
-anti_keywords = ["School of Electrical Engineering", "Skolan för elektroteknik",
-                 "Chemistry, Biotechnology and Health", "kemi, bioteknologi och hälsa",
-                 "Architecture and Built Environment", "Skolan för arkitektur och samhällsbyggnad",
-                 "School of Industrial Engineering and Management", "Skolan för industriell teknik och management" ]
+anti_keywords = ["School of Electrical Engineering", "Skolan för elektroteknik", "EECS",
+                 "Chemistry, Biotechnology and Health", "kemi, bioteknologi och hälsa", "CBH",
+                 "Architecture and Built Environment", "Skolan för arkitektur och samhällsbyggnad", "ABE",
+                 "School of Industrial Engineering and Management", "Skolan för industriell teknik och management", "ITM", "Department of Physics"]
+
+# PhD subjects
+subjects = ["Mathematics","Applied and computational mathematics"]
+anti_subjects = ["Computer Science","Solid Mechanics"]
 
 # re.escape(k) for k in keywords
 title_strong_pattern = re.compile(r"|".join(title_strong_keywords), re.IGNORECASE)
@@ -46,6 +50,9 @@ ad_strong_pattern = re.compile(r"|".join(ad_strong_keywords), re.IGNORECASE)
 ad_weak_pattern = re.compile(r"|".join(ad_weak_keywords), re.IGNORECASE)
 anti_pattern = re.compile(r"|".join(anti_keywords), re.IGNORECASE)
 
+subj_pattern = re.compile(r"Third-cycle subject:\s*(.*)")
+subjects_pattern = re.compile(r"|".join(subjects), re.IGNORECASE)
+anti_subjects_pattern = re.compile(r"|".join(anti_subjects), re.IGNORECASE)
 
 organizations = {
     177: { "name": "KTH",
@@ -96,13 +103,14 @@ def fetch_all_math_jobs():
 
     for entry in fetch_all_jobs():
         math = False
+        not_math = False
 #        print( entry["department"] )
         if title_weak_pattern.search(entry["title"]) and not anti_pattern.search(entry["department"] or ""):
             # Potential math job
             print(f"- Job ID {entry['id']}: ",end="", file=sys.stderr)
             if title_strong_pattern.search(entry["title"]):
                 # Math job (due to title)
-                print(f"mathematics (title)", file=sys.stderr)
+                print(f"MATHEMATICS (title)", file=sys.stderr)
                 math = True
             else:
                 # Fetch html ad and investigate.
@@ -112,16 +120,42 @@ def fetch_all_math_jobs():
                     raise TooManyRequests(response)
                 print(" [CACHED] " if is_cached(response) else "", end="", file=sys.stderr)
                 soup = BeautifulSoup(response.text, features='lxml')
-                if soup.find(text=ad_strong_pattern):
-                    # Math job (mentions Department of Mathematics)
-                    print(f"mathematics (department).", file=sys.stderr)
-                    math = True
-                elif soup.find(text=ad_weak_pattern) and not soup.find(text=anti_pattern):
-                    # Perhaps math job (mentions Mathematics)
-                    print(f"perhaps mathematics.", file=sys.stderr)
-                    math = True
-                else:
-                    print("not mathematics.", file=sys.stderr)
+
+                # Look for PhD subjects
+                subjects = soup.find_all(string=subj_pattern)
+                if len(subjects) == 1:
+                    print(f"PhD subject: ", end="", file=sys.stderr)
+                elif len(subjects) > 1:
+                    print(f"MULTIPLE PhD subjects: ", end="", file=sys.stderr)
+                for result in subjects:
+                    m = subj_pattern.match(result)
+                    if m:
+                        subj = m[1]
+                        if( len(subj) == 0 ):
+                            subj = result.next_element
+                        print(subj, end="", file=sys.stderr)
+                        if( subjects_pattern.match(subj) ):
+                            print(" (MATHEMATICS).", file=sys.stderr)
+                            math = True
+                        elif( anti_subjects_pattern.match(subj) ):
+                            print(" (definitely not mathematics).", file=sys.stderr)
+                            not_math = True
+                        else:
+                            print(" (probably not mathematics).", file=sys.stderr)
+                    else:
+                        print("ERROR", end="", file=sys.stderr)
+                if not math and not not_math:
+                    if soup.find(string=ad_strong_pattern):
+                        # Math job (mentions Department of Mathematics)
+                        print(f"MATHEMATICS (department).", file=sys.stderr)
+                        math = True
+                    elif soup.find(string=ad_weak_pattern) and not soup.find(string=anti_pattern):
+                        # Perhaps math job (mentions Mathematics)
+                        print(f"perhaps MATHEMATICS?", file=sys.stderr)
+                        math = True
+                    else:
+                        print("not mathematics.", file=sys.stderr)
+                        not_math = True
         if math:
             math_jobs.append( entry )
 
