@@ -13,7 +13,9 @@ from utility import unescape_html
 
 ALTERNATE_SPEAKER_TAGS = ["Lecturer", "Doctoral student", "Respondent", "Participating"]
 EVENT_SERIES = [
-    "Conference",
+    "Conference"
+]
+SEMINAR_AND_EVENT_SERIES = [
     "SMC Colloquium",
     "Göran Gustafsson Lectures in mathematics",
 ]
@@ -113,6 +115,14 @@ def scrape(
     events, seminars = [], []
     for entry in html.find_all("li", class_="calendar__event"):
         entry = parse_calendar_entry(entry)
+        if isinstance(entry, Seminar):
+            if entry.day <= stop_seminars:
+                seminars.append(entry)
+            # Some Seminars also appear in Events, convert to Event
+            if entry.series in SEMINAR_AND_EVENT_SERIES:
+                entry = Event(entry.day, None,
+                              (f"{entry.speaker}, " if entry.speaker else "")+entry.title,
+                              entry.location, entry.series, entry.calendar_url)
         if isinstance(entry, Event):
             if entry.start_day > stop_events:
                 continue
@@ -126,8 +136,6 @@ def scrape(
             ):
                 continue
             events.append(entry)
-        elif entry.day <= stop_seminars:
-            seminars.append(entry)
     events.sort(key=lambda event: (event.start_day, event.end_day, event.title))
     return events, seminars
 
