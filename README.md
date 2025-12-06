@@ -12,7 +12,7 @@ to compile a weekly digest email.
 
 ## Contents
 
-1. Python script `semads.py` (which uses `smc_scraper.py` and `utility.py`) to retrieve calendar entries.
+1. Python script `semads.py` (which uses `smc_scraper.py`, `utility.py`, `varbi_scraper.py`) to retrieve calendar entries and current job postings.
 2. Python script `seminarmailer.py` to send out the digest email.
 3. Bash script `calendar.sh` to facilitate the previous two steps.
 4. Python script `iml_scraper.py` to retrieve calendar entries from the web page of Insitut Mittag-Leffler, which can be run separately as a helper script if those entries should be added to the calendar.
@@ -45,7 +45,7 @@ Bash script `calendar.sh` facilitates steps 3-5. See [Usage](#usage).
 
 ## Usage
 
-1. Make sure `calendar.sh`, `semads.py` and `seminarmailer.py` are in the same directory.
+1. Make sure `calendar.sh`, `semads.py`, `smc_scraper.py`, `utility.py`, `varbi_scraper.py` and `seminarmailer.py` are in the same directory.
 2. Copy `config.default` to `config`.
 3. Update `"user"` in `config` to reflect your KTH username.
 4. Update `"python"` in `config` if necessary.

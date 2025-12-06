@@ -10,6 +10,7 @@ python="python3" # Replace with specific version (e.g. python2) if necessary
 # Script paths
 
 semads="semads.py"               # Email creator script
+#semads_args=(--jobs "extra_jobs.csv" --lang sv)  # Additional arguments to semads
 seminarmailer="seminarmailer.py" # Mailer script
 email_list="emails.txt"          # List of emails
 

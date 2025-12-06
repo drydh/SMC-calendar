@@ -1,11 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-"""This script downloads the calendar of the SMC and
-formats the information as a text file.
+"""This script downloads the calendar of the SMC and formats the information as
+a text file. It also includes job listings from Varbi and an optional extra
+csv-file.
 
 # Usage
- python semads.py --start 20100301 --stop 20100308 --output message.txt
+ python semads.py --start 20100301 --output message.txt
+      [--stop-seminars 20100308] [--lang sv]
+      [--stop-events 20100501] [--max-events 3]
+      [--jobs-csv extra_jobs.csv]
 
  The above run will download all items in the calendar from 20100301
  (March 1, 2010) to 20100308 (March 8, 2010), output the generated
@@ -15,6 +19,7 @@ formats the information as a text file.
 
  Install required packages using:
  python -m pip install -r requirements.txt
+
 """
 from __future__ import annotations
 
@@ -98,6 +103,14 @@ parser.add_argument(
     help="maximum number of events, not counting ties (events before the seminar stop date are always included)",
     default=5,
 )
+parser.add_argument(
+    "--jobs",
+    action="append",
+    type=str,
+    help="csv file with jobs (headers on first line: publish, deadline, university, title, url)",
+    metavar="jobs.csv",
+    default=[],
+)
 
 args = parser.parse_args()
 
@@ -122,7 +135,7 @@ def scrape_and_format():
         lang=args.lang,
         max_events=args.max_events,
     )
-    jobs = varbi_scraper.scrape()
+    jobs = varbi_scraper.scrape(args.jobs)
     seminars_by_day = expand_and_group_by_day(seminars)
 
     formatted_start = format_date_email(args.start)

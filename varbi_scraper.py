@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 #import contextlib
 import datetime
@@ -237,9 +238,7 @@ def format_job(job):
 # Retrieve jobs (file + web)
 ######################################################################
 
-def extra_jobs():
-    filename="extra_jobs.csv"
-    print(f"Fetching jobs from '{filename}'.", file=sys.stderr)
+def jobs_from_file(filename):
     with open(filename, newline='') as csvfile:
         reader = csv.DictReader( csvfile )
         for job in reader:
@@ -252,11 +251,24 @@ def extra_jobs():
                         "title": job["title"],
                         "ad_url": job["url"] }
 
-def scrape():
-    jobs = list(extra_jobs()) + find_varbi_jobs()
+def extra_jobs(filenames):
+    for filename in filenames:
+        print(f"Fetching jobs from '{filename}'", end="", file=sys.stderr)
+        num_jobs=0
+        try:
+            for job in jobs_from_file(filename):
+                num_jobs += 1
+                yield job
+            print(f" ({num_jobs} jobs).", file=sys.stderr)
+        except FileNotFoundError:
+            print(f" -- file missing.", file=sys.stderr)
+
+
+def scrape(job_files):
+    jobs = list(extra_jobs(job_files)) + find_varbi_jobs()
     jobs = sorted(jobs, key=lambda d: d['deadline'].date())
     return jobs
 
 if __name__ == "__main__":
-    for job in scrape():
+    for job in scrape(sys.argv[1:]):
         print( format_job( job ) )
