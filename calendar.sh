@@ -29,6 +29,7 @@ install -d Archive
 
 start_date=$(date -d 'next Wednesday - 2 days' +"%Y%m%d")
 end_date=$(date -d 'next Wednesday + 4 days' +"%Y%m%d")
+week_day=$(date +"%u")
 
 start_day=$(LANG=en_US; date -d "${start_date}" +"%d %B")
 end_day=$(LANG=en_US; date -d "${end_date}" +"%d %B")
@@ -51,6 +52,10 @@ if [[ $OSTYPE == 'darwin'* ]]; then
   open -a TextEdit "$message_file"
 else
   nano "$message_file"
+fi
+
+if [[ "$week_day" -gt "1" && "$week_day" -lt "5" ]]; then
+	echo "WARNING: It is $(date +"%A"), do you really want to send the email?"
 fi
 
 response="No"
