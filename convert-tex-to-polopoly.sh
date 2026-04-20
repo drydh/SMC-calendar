@@ -30,7 +30,8 @@ split_paragraphs () {
 }
 
 # Split into paragraphs.
-# Replace $...$ with <span class="math-tex">\(...\)</span>
+# Replace $...$ or \(...\) with <span class="math-tex">\(...\)</span>
+# Replace $$...$$ or \[...\] with <span class="math-tex">\[...\]</span>
 # Replace \emph{...} and \textit{...} with <i>...</i>
 # Replace ``...'' with curly quotation marks (UTF8: \xE2\x80\x9C and \x9D)
 # Replace "\ " and "~" with (non-breaking) space.
@@ -38,7 +39,10 @@ BQ='`'
 FQ="'"
 
 cat "$@" | split_paragraphs |
-sed -E -e 's/\$([^$]*)\$/<span\ class="math-tex">\\(\1\\)<\/span>/g' \
+sed -E -e 's/\\\[([^$]*)\\\]/<span\ class="math-tex">\\[\1\\]<\/span>/g' \
+	   -e 's/\$\$([^$]*)\$\$/<span\ class="math-tex">\\[\1\\]<\/span>/g' \
+	   -e 's/\\\(([^$]*)\\\)/<span\ class="math-tex">\\(\1\\)<\/span>/g' \
+	   -e 's/\$([^$]*)\$/<span\ class="math-tex">\\(\1\\)<\/span>/g' \
 	   -e 's/\\(emph|textit)\{([^}]*)\}/<i>\2<\/i>/g' \
 	   -e "s/$BQ$BQ([^$BQ$FQ]*)$FQ$FQ/“\1”/g" \
 	   -e "s/$BQ([^$BQ$FQ]*)$FQ/‘\1’/g" \
