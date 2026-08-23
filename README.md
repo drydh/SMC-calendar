@@ -8,7 +8,7 @@ to compile a weekly digest email.
 - Python (3.7+)
 - Package dependencies listed in `requirements.txt`: to install dependencies, run
 ```$ python3 -m pip install -r requirements.txt```
-- KTH account with access to edit Polopoly and send emails: copy/rename `config.default` to `config` and add  the username to send the emails from
+- KTH account with access to edit Polopoly and send emails: copy/rename `config.default` to `config` and add the username to send the emails from.
 
 ## Contents
 
