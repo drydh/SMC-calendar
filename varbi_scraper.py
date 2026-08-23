@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #import contextlib
+import ast
 import datetime
 import re
-import csv
 
 import requests
 from bs4 import BeautifulSoup # >= 4.4.0.
@@ -109,10 +109,21 @@ class TooManyRequests(Exception):
 # Fetch JSON from Varbi
 ######################################################################
 
-def find_varbi_jobs():
+def find_varbi_jobs(include_ids=(), exclude_ids=()):
     math_jobs = []
+    include_ids = {str(job_id) for job_id in include_ids}
+    exclude_ids = {str(job_id) for job_id in exclude_ids}
 
     for entry in fetch_all_jobs():
+        job_id = str(entry["id"])
+        if job_id in exclude_ids:
+            print(f"- Job ID {entry['id']}: excluded by extra jobs file.", file=sys.stderr)
+            continue
+        if job_id in include_ids:
+            print(f"- Job ID {entry['id']}: included by extra jobs file.", file=sys.stderr)
+            math_jobs.append(entry)
+            continue
+
         math = False
         not_math = False
 #        print( entry["department"] )
@@ -238,34 +249,43 @@ def format_job(job):
 # Retrieve jobs (file + web)
 ######################################################################
 
-def jobs_from_file(filename):
-    with open(filename, newline='') as csvfile:
-        reader = csv.DictReader( csvfile )
-        for job in reader:
-            publish = datetime.date.fromisoformat(job["publish"])
-            deadline = datetime.date.fromisoformat(job["deadline"])
-            today = datetime.date.today()
-            if today >= publish and today <= deadline:
-                yield { "deadline": datetime.datetime.combine(deadline,datetime.time.max),
-                        "university": job["university"],
-                        "title": job["title"],
-                        "ad_url": job["url"] }
+def extra_job_config(filenames):
+    config = {"include_ids": [], "exclude_ids": [], "extra": []}
 
-def extra_jobs(filenames):
     for filename in filenames:
         print(f"Fetching jobs from '{filename}'", end="", file=sys.stderr)
-        num_jobs=0
         try:
-            for job in jobs_from_file(filename):
-                num_jobs += 1
-                yield job
-            print(f" ({num_jobs} jobs).", file=sys.stderr)
+            with open(filename, encoding="utf-8") as file:
+                file_config = ast.literal_eval(file.read())
         except FileNotFoundError:
             print(f" -- file missing.", file=sys.stderr)
+            continue
+
+        config["include_ids"].extend(file_config.get("include_ids", []))
+        config["exclude_ids"].extend(file_config.get("exclude_ids", []))
+        config["extra"].extend(file_config.get("extra", []))
+        print(f" ({len(file_config.get('extra', []))} extra jobs).", file=sys.stderr)
+
+    return config
 
 
+def extra_jobs(config):
+    today = datetime.date.today()
+    for job in config["extra"]:
+        publish = datetime.date.fromisoformat(job["publish"])
+        deadline = datetime.date.fromisoformat(job["deadline"])
+        if today >= publish and today <= deadline:
+            yield { "deadline": datetime.datetime.combine(deadline,datetime.time.max),
+                    "university": job["university"],
+                    "title": job["title"],
+                    "ad_url": job["url"] }
+
+
+# job_files is list of files with Python literals
 def scrape(job_files):
-    jobs = list(extra_jobs(job_files)) + find_varbi_jobs()
+    config = extra_job_config(job_files)
+    jobs = (list(extra_jobs(config))
+            + find_varbi_jobs(config["include_ids"], config["exclude_ids"]))
     jobs = sorted(jobs, key=lambda d: d['deadline'].date())
     return jobs
 

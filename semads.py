@@ -33,7 +33,6 @@ import smc_scraper
 from smc_scraper import Seminar
 
 import varbi_scraper
-from varbi_scraper import format_job
 
 
 for locale_ in [("en_GB", "utf-8"), ("en_US", "utf-8"), "C"]:
@@ -159,7 +158,7 @@ def scrape_and_format():
     if jobs:
         body += "\n".join(["POSITIONS", "=========", "", ""])
         for job in jobs:
-            body += format_job( job ) + "\n"
+            body += varbi_scraper.format_job( job ) + "\n"
         body += "\n\n"
 
     body += "\n".join(

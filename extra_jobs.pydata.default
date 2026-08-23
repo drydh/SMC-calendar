@@ -1,0 +1,18 @@
+# -*- mode: python -*-
+# This file is parsed as a Python literal with ast.literal_eval.
+# It is not imported nor executed.
+{
+    # List of Varbi IDs, not identified as MATH but that should be included.
+    "include_ids": [],
+
+    # List of Varbi IDs, identified as MATH, that should not be included.
+    "exclude_ids": [],
+
+    # Extra jobs, not in Varbi. Each entry is a dictionary with:
+    #   publish: first date to show the job, as YYYY-MM-DD
+    #   deadline: application deadline, as YYYY-MM-DD
+    #   university: short display name, e.g. "SU" or "KTH"
+    #   title: job title shown in the email
+    #   url: job/ad URL shown in the email
+    "extra": [],
+}
