@@ -13,8 +13,8 @@ import sys
 
 title_strong_keywords = ["mathematics", "matematik",
                   "mathematical", "matematisk",
-                  "numerical analysis", "numerisk analays",
-                  "\blogic", "\blogik"]
+                  "numerical analysis", "numerisk analys",
+                  r"\blogic", r"\blogik"]
 
 title_weak_keywords = ["mathematic", # s, al
                        "matemati", # k, sk
@@ -23,7 +23,7 @@ title_weak_keywords = ["mathematic", # s, al
                        "number theory", "talteori",
                        "topolog", # y, i
                        "geometr", # y, i, ical
-                       "\blogi", # c, k (and don't match geological etc)
+                       r"\blogi", # c, k (and don't match geological etc)
                        "numerical", "numerisk", # (analys)
                        "optimization", "optimering",
                        "computational", "beräkning",
@@ -31,14 +31,17 @@ title_weak_keywords = ["mathematic", # s, al
                        "probability", "sannolikhet",
                        "complex",
                        "modeling", "modelling",
-                       "\bdata\b"]
+                       "dynamics",
+                       r"\bdata\b"]
 
 ad_strong_keywords = ["department of mathematics", "institutionen för matematik", "KTH mathematics", "computational mathematics", "applied mathematics"]
 ad_weak_keywords = ["mathematics", "matematik"] # Don't want "mathematical"
-anti_keywords = ["School of Electrical Engineering", "Skolan för elektroteknik", "EECS",
-                 "Chemistry, Biotechnology and Health", "kemi, bioteknologi och hälsa", "CBH",
-                 "Architecture and Built Environment", "Skolan för arkitektur och samhällsbyggnad", "ABE",
-                 "School of Industrial Engineering and Management", "Skolan för industriell teknik och management", "ITM", "Department of Physics"]
+anti_phrases = ["School of Electrical Engineering", "Skolan för elektroteknik",
+                "Chemistry, Biotechnology and Health", "kemi, bioteknologi och hälsa",
+                "Architecture and Built Environment", "Skolan för arkitektur och samhällsbyggnad",
+                "School of Industrial Engineering and Management", "Skolan för industriell teknik och management",
+                "Department of Physics", "Department of linguistics"]
+anti_acronyms = ["EECS", "CBH", "ABE", "ITM"]
 
 # PhD subjects
 subjects = ["Mathematics","Applied and computational mathematics"]
@@ -49,7 +52,10 @@ title_strong_pattern = re.compile(r"|".join(title_strong_keywords), re.IGNORECAS
 title_weak_pattern = re.compile(r"|".join(title_weak_keywords), re.IGNORECASE)
 ad_strong_pattern = re.compile(r"|".join(ad_strong_keywords), re.IGNORECASE)
 ad_weak_pattern = re.compile(r"|".join(ad_weak_keywords), re.IGNORECASE)
-anti_pattern = re.compile(r"|".join(anti_keywords), re.IGNORECASE)
+anti_pattern = re.compile(r"|".join(
+    [rf"(?i:{re.escape(phrase)})" for phrase in anti_phrases]
+    + [rf"\b{re.escape(acronym)}\b" for acronym in anti_acronyms]
+))
 
 subj_pattern = re.compile(r"Third-cycle subject:\s*(.*)")
 subjects_pattern = re.compile(r"|".join(subjects), re.IGNORECASE)
