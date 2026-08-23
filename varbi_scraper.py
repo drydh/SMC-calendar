@@ -117,10 +117,10 @@ def find_varbi_jobs(include_ids=(), exclude_ids=()):
     for entry in fetch_all_jobs():
         job_id = str(entry["id"])
         if job_id in exclude_ids:
-            print(f"- Job ID {entry['id']}: excluded by extra jobs file.", file=sys.stderr)
+            print(f"\nJob ID {entry['id']} {entry['title']}:\n  EXCLUDED by extra jobs file.", file=sys.stderr)
             continue
         if job_id in include_ids:
-            print(f"- Job ID {entry['id']}: included by extra jobs file.", file=sys.stderr)
+            print(f"\nJob ID {entry['id']} {entry['title']}:\n  INCLUDED by extra jobs file.", file=sys.stderr)
             math_jobs.append(entry)
             continue
 
@@ -129,10 +129,10 @@ def find_varbi_jobs(include_ids=(), exclude_ids=()):
 #        print( entry["department"] )
         if title_weak_pattern.search(entry["title"]) and not anti_pattern.search(entry["department"] or ""):
             # Potential math job
-            print(f"- Job ID {entry['id']}: ",end="", file=sys.stderr)
+            print(f"\nJob ID {entry['id']} {entry['title']}:\n  ",end="", file=sys.stderr)
             if title_strong_pattern.search(entry["title"]):
                 # Math job (due to title)
-                print(f"MATHEMATICS (title)", file=sys.stderr)
+                print(f"YES, mathematics (title)", file=sys.stderr)
                 math = True
             else:
                 # Fetch html ad and investigate.
@@ -166,14 +166,14 @@ def find_varbi_jobs(include_ids=(), exclude_ids=()):
                 if not math and not not_math:
                     if soup.find(string=ad_strong_pattern):
                         # Math job (mentions Department of Mathematics)
-                        print(f"MATHEMATICS (department).", file=sys.stderr)
+                        print(f"YES, mathematics (department).", file=sys.stderr)
                         math = True
                     elif soup.find(string=ad_weak_pattern) and not soup.find(string=anti_pattern):
                         # Perhaps math job (mentions Mathematics)
                         print(f"perhaps MATHEMATICS?", file=sys.stderr)
                         math = True
                     else:
-                        print("not mathematics.", file=sys.stderr)
+                        print("NO, not mathematics.", file=sys.stderr)
                         not_math = True
         if math:
             math_jobs.append( entry )
